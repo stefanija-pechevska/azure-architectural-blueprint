@@ -4,6 +4,23 @@ This document explains the differences between Apigee and Azure API Management, 
 
 ---
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Apigee](#apigee)
+- [Azure API Management (APIM)](#azure-api-management-apim)
+- [Feature Comparison](#feature-comparison)
+- [Architecture Considerations](#architecture-considerations)
+- [Cost Comparison](#cost-comparison)
+- [Decision Matrix](#decision-matrix)
+- [Hybrid Approach](#hybrid-approach)
+- [Migration Considerations](#migration-considerations)
+- [Recommendation for This Project](#recommendation-for-this-project)
+- [Configuration Files](#configuration-files)
+- [References](#references)
+
+---
+
 ## Overview
 
 Both **Apigee** and **Azure API Management (APIM)** are enterprise-grade API management platforms that provide API gateway functionality, security, rate limiting, analytics, and developer portal capabilities. However, they have different origins, deployment models, and feature sets.

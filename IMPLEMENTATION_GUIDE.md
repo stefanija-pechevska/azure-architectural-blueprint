@@ -5,6 +5,30 @@ This guide provides detailed steps to implement the PoC system from scratch.
 
 ---
 
+## Table of Contents
+
+- [Phase 1: Prerequisites and Azure Setup](#phase-1-prerequisites-and-azure-setup)
+- [Phase 2: Database Setup](#phase-2-database-setup)
+- [Phase 3: AKS Cluster Setup](#phase-3-aks-cluster-setup)
+- [Phase 4: Azure Service Bus Setup](#phase-4-azure-service-bus-setup)
+- [Phase 4.5: Azure Redis Cache Setup](#phase-45-azure-redis-cache-setup)
+- [Phase 4.6: Azure Functions Setup](#phase-46-azure-functions-setup)
+- [Phase 5: GitLab Repository Setup](#phase-5-gitlab-repository-setup)
+- [Phase 6: Backend Services Development](#phase-6-backend-services-development)
+- [Phase 7: Frontend Development](#phase-7-frontend-development)
+- [Phase 8: Apigee Configuration](#phase-8-apigee-configuration)
+- [Phase 9: Integration Setup](#phase-9-integration-setup)
+- [Phase 10: Monitoring and Observability](#phase-10-monitoring-and-observability)
+- [Phase 11: GDPR Compliance Implementation](#phase-11-gdpr-compliance-implementation)
+- [Phase 12: Testing](#phase-12-testing)
+- [Phase 13: Production Deployment](#phase-13-production-deployment)
+- [Phase 14: Documentation](#phase-14-documentation)
+- [Quick Start Commands](#quick-start-commands)
+- [Troubleshooting](#troubleshooting)
+- [Next Steps](#next-steps)
+
+---
+
 ## Phase 1: Prerequisites and Azure Setup
 
 ### Step 1.1: Azure Subscription Setup

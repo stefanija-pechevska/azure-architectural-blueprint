@@ -7,6 +7,34 @@ This document outlines the technical architecture for a cloud-native, microservi
 
 ---
 
+## Table of Contents
+
+1. [System Overview](#1-system-overview)
+   - [Business Domain](#11-business-domain)
+   - [Key Requirements](#12-key-requirements)
+2. [Architecture Diagram](#2-architecture-diagram)
+   - [Azure Services Architecture Diagram](#21-azure-services-architecture-diagram)
+3. [Component Architecture](#3-component-architecture)
+   - [Frontend Layer](#31-frontend-layer)
+   - [API Gateway Layer](#32-api-gateway-layer)
+   - [Microservices Layer](#33-microservices-layer-spring-boot)
+   - [Data Layer](#34-data-layer)
+   - [Secrets Management Layer](#35-secrets-management-layer)
+   - [Serverless Functions Layer](#36-serverless-functions-layer)
+   - [Integration Layer](#36-integration-layer)
+   - [Messaging & Events](#36-messaging--events)
+   - [Authentication & Authorization](#37-authentication--authorization)
+   - [Observability](#38-observability)
+4. [Security Architecture](#4-security-architecture)
+5. [Deployment Architecture](#5-deployment-architecture)
+6. [Scalability & Performance](#6-scalability--performance)
+7. [Disaster Recovery & Backup](#7-disaster-recovery--backup)
+8. [Cost Optimization](#8-cost-optimization)
+9. [Technology Stack Summary](#9-technology-stack-summary)
+10. [Next Steps](#10-next-steps)
+
+---
+
 ## 1. System Overview
 
 ### 1.1 Business Domain

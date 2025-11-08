@@ -4,6 +4,25 @@ This document explains the differences between HashiCorp Vault and Azure Key Vau
 
 ---
 
+## Table of Contents
+
+- [Overview](#overview)
+- [HashiCorp Vault](#hashicorp-vault)
+- [Azure Key Vault](#azure-key-vault)
+- [Feature Comparison](#feature-comparison)
+- [Architecture Considerations](#architecture-considerations)
+- [Cost Comparison](#cost-comparison)
+- [Use Cases](#use-cases)
+- [Decision Matrix](#decision-matrix)
+- [Hybrid Approach](#hybrid-approach)
+- [Integration with This Architecture](#integration-with-this-architecture)
+- [Migration Considerations](#migration-considerations)
+- [Recommendation for This Project](#recommendation-for-this-project)
+- [Configuration Files](#configuration-files)
+- [References](#references)
+
+---
+
 ## Overview
 
 Both **HashiCorp Vault** and **Azure Key Vault** are enterprise-grade secrets management solutions that provide secure storage and management of secrets, keys, certificates, and sensitive data. However, they have different architectures, deployment models, and feature sets.

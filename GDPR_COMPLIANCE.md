@@ -1,5 +1,24 @@
 # GDPR Compliance Implementation Guide
 
+## Table of Contents
+
+- [Overview](#overview)
+- [GDPR Principles](#gdpr-principles)
+  - [Right to Access (Article 15)](#1-right-to-access-article-15)
+  - [Right to Erasure (Article 17)](#2-right-to-erasure-article-17)
+  - [Right to Rectification (Article 16)](#3-right-to-rectification-article-16)
+  - [Data Minimization (Article 5)](#4-data-minimization-article-5)
+  - [Consent Management (Article 7)](#5-consent-management-article-7)
+  - [Data Breach Notification (Article 33)](#6-data-breach-notification-article-33)
+  - [Privacy by Design](#7-privacy-by-design)
+  - [Data Processing Records (Article 30)](#8-data-processing-records-article-30)
+- [Implementation Checklist](#implementation-checklist)
+- [Testing GDPR Compliance](#testing-gdpr-compliance)
+- [Compliance Monitoring](#compliance-monitoring)
+- [Contact Information](#contact-information)
+
+---
+
 ## Overview
 
 This document outlines the GDPR compliance measures implemented in the Customer Service & Order Management Platform.

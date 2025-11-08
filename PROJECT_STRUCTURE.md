@@ -2,6 +2,18 @@
 
 This document provides an overview of the project structure and key files.
 
+## Table of Contents
+
+- [Directory Structure](#directory-structure)
+- [Key Files Explained](#key-files-explained)
+- [Service Communication](#service-communication)
+- [Authentication Flow](#authentication-flow)
+- [Data Flow](#data-flow)
+- [Environment Variables](#environment-variables)
+- [Next Steps](#next-steps)
+
+---
+
 ## Directory Structure
 
 ```
