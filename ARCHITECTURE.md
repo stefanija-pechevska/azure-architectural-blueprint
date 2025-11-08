@@ -672,7 +672,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ### 3.6 Serverless Functions Layer
 
-#### 3.5.1 Azure Functions (Housekeeping Jobs)
+#### 3.6.1 Azure Functions (Housekeeping Jobs)
 **Deployment**: Azure Functions (Consumption Plan)
 
 **Functions**:
