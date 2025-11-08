@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OAuthV2 name="ValidateJWT-External">
+    <Operation>VerifyAccessToken</Operation>
+    <PublicKey>
+        <JWKS uri="https://{entra-external-tenant-name}.ciam.login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys"/>
+    </PublicKey>
+    <Issuer>https://{entra-external-tenant-name}.ciam.login.microsoftonline.com/{tenant-id}/v2.0</Issuer>
+    <Audience>{entra-external-client-id}</Audience>
+</OAuthV2>
+

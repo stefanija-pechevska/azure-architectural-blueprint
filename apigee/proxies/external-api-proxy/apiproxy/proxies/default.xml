@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxyEndpoint name="default">
+    <Description>External API Proxy for Client-facing APIs</Description>
+    <PreFlow name="PreFlow">
+        <Request>
+            <Step>
+                <Name>ValidateJWT-External</Name>
+            </Step>
+            <Step>
+                <Name>RateLimit-External</Name>
+            </Step>
+            <Step>
+                <Name>AddCORSHeaders</Name>
+            </Step>
+        </Request>
+    </PreFlow>
+    <HTTPProxyConnection>
+        <BasePath>/api/v1</BasePath>
+        <VirtualHost>default</VirtualHost>
+    </HTTPProxyConnection>
+    <RouteRule name="orders">
+        <TargetEndpoint>orders-backend</TargetEndpoint>
+        <Condition>proxy.pathsuffix MatchesPath "/orders*"</Condition>
+    </RouteRule>
+    <RouteRule name="products">
+        <TargetEndpoint>products-backend</TargetEndpoint>
+        <Condition>proxy.pathsuffix MatchesPath "/products*"</Condition>
+    </RouteRule>
+    <RouteRule name="account">
+        <TargetEndpoint>account-backend</TargetEndpoint>
+        <Condition>proxy.pathsuffix MatchesPath "/account*"</Condition>
+    </RouteRule>
+    <PostFlow name="PostFlow">
+        <Response>
+            <Step>
+                <Name>LogResponse</Name>
+            </Step>
+        </Response>
+    </PostFlow>
+</ProxyEndpoint>
+
