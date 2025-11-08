@@ -26,6 +26,12 @@ param keyVaultName string = 'kv-csom-platform-prod'
 @description('Service Bus namespace name')
 param serviceBusNamespaceName string = 'sb-csom-platform-prod'
 
+@description('Redis Cache name')
+param redisCacheName string = 'redis-csom-platform-prod'
+
+@description('Azure Functions App name')
+param functionsAppName string = 'func-csom-platform-prod'
+
 // Resource Group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
@@ -145,10 +151,122 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
+// Redis Cache
+resource redisCache 'Microsoft.Cache/redis@2023-08-01' = {
+  name: redisCacheName
+  location: location
+  properties: {
+    sku: {
+      name: 'Standard'
+      family: 'C'
+      capacity: 1
+    }
+    enableNonSslPort: false
+    minimumTlsVersion: '1.2'
+    redisConfiguration: {
+      maxmemoryReserved: '50'
+      maxmemoryPolicy: 'allkeys-lru'
+    }
+  }
+}
+
+// Storage Account for Azure Functions
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: '${toLower(functionsAppName)}stor'
+  location: location
+  kind: 'StorageV2'
+  sku: {
+    name: 'Standard_LRS'
+  }
+  properties: {
+    supportsHttpsTrafficOnly: true
+    minimumTlsVersion: 'TLS1_2'
+  }
+}
+
+// App Service Plan for Azure Functions
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
+  name: '${functionsAppName}-plan'
+  location: location
+  kind: 'functionapp'
+  sku: {
+    name: 'Y1'
+    tier: 'Dynamic'
+  }
+  properties: {
+    reserved: true
+  }
+}
+
+// Azure Functions App
+resource functionsApp 'Microsoft.Web/sites@2023-01-01' = {
+  name: functionsAppName
+  location: location
+  kind: 'functionapp'
+  properties: {
+    serverFarmId: appServicePlan.id
+    siteConfig: {
+      appSettings: [
+        {
+          name: 'AzureWebJobsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+        }
+        {
+          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+        }
+        {
+          name: 'WEBSITE_CONTENTSHARE'
+          value: toLower(functionsAppName)
+        }
+        {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'java'
+        }
+        {
+          name: 'POSTGRES_HOST'
+          value: postgresServer.properties.fullyQualifiedDomainName
+        }
+        {
+          name: 'POSTGRES_USER'
+          value: postgresAdminUsername
+        }
+        {
+          name: 'REDIS_CACHE_HOST'
+          value: '${redisCache.properties.hostName}'
+        }
+        {
+          name: 'REDIS_CACHE_PORT'
+          value: string(redisCache.properties.port)
+        }
+        {
+          name: 'SERVICE_BUS_CONNECTION_STRING'
+          value: 'Connection string should be set from Key Vault'
+        }
+        {
+          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+          value: appInsights.properties.InstrumentationKey
+        }
+      ]
+      javaVersion: '17'
+    }
+    httpsOnly: true
+  }
+}
+
 // Outputs
 output acrLoginServer string = acr.properties.loginServer
 output keyVaultUri string = keyVault.properties.vaultUri
 output postgresFqdn string = postgresServer.properties.fullyQualifiedDomainName
 output serviceBusConnectionString string = 'Connection string should be retrieved from Azure Portal'
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
+output redisCacheHostName string = redisCache.properties.hostName
+output redisCachePort string = string(redisCache.properties.port)
+output redisCachePrimaryKey string = redisCache.listKeys().primaryKey
+output functionsAppName string = functionsApp.name
+output functionsAppUrl string = 'https://${functionsApp.properties.defaultHostName}'
 

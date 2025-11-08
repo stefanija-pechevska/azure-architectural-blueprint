@@ -103,6 +103,129 @@ This document outlines the technical architecture for a cloud-native, microservi
 
 ---
 
+## 2.1 Azure Services Architecture Diagram
+
+This diagram illustrates all Azure services used in the platform and their relationships:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           AZURE CLOUD PLATFORM                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        │                           │                           │
+┌───────▼────────┐        ┌─────────▼─────────┐      ┌─────────▼─────────┐
+│  Azure App     │        │  Azure Static      │      │  Entra ID /        │
+│  Service       │        │  Web Apps          │      │  External ID       │
+│                │        │                    │      │                    │
+│  (Frontend     │        │  (Frontend         │      │  (Authentication)  │
+│   Host)        │        │   Alternative)     │      │                    │
+└───────┬────────┘        └────────────────────┘      └─────────┬─────────┘
+        │                                                    │
+        │                                                    │
+┌───────▼───────────────────────────────────────────────────────▼────────────┐
+│                    APIGEE API MANAGEMENT                                    │
+│                    (or Azure API Management)                                 │
+└───────────────────────────────────────┬─────────────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE KUBERNETES SERVICE (AKS)                           │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  Microservices Pods:                                                │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐          │   │
+│  │  │  Order   │  │ Product  │  │ Customer │  │ Payment  │          │   │
+│  │  │ Service  │  │ Service  │  │ Service │  │ Service  │          │   │
+│  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘          │   │
+│  │       │            │             │             │                  │   │
+│  │  ┌────▼─────┐  ┌───▼──────┐  ┌───▼──────┐                        │   │
+│  │  │Notification│ │  Audit   │  │  Other   │                        │   │
+│  │  │  Service  │ │ Service  │  │ Services │                        │   │
+│  │  └──────────┘  └──────────┘  └──────────┘                        │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+└───────────────────────────────────────┬─────────────────────────────────────┘
+                                        │
+        ┌───────────────────────────────┼───────────────────────────────┐
+        │                               │                               │
+┌───────▼────────┐            ┌─────────▼─────────┐          ┌─────────▼─────────┐
+│  Azure         │            │  Azure Database    │          │  Azure Redis      │
+│  Key Vault     │            │  for PostgreSQL    │          │  Cache             │
+│                │            │  Flexible Server   │          │                    │
+│  • Secrets     │            │                    │          │  • Session Cache   │
+│  • Certificates│            │  • Primary DB       │          │  • Data Cache      │
+│  • Keys        │            │  • Read Replicas    │          │  • Rate Limiting  │
+└────────────────┘            └────────────────────┘          └────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE SERVICE BUS (Messaging)                             │
+│  • order-events topic                                                       │
+│  • payment-events topic                                                     │
+│  • notification-events topic                                                 │
+│  • gdpr-events topic                                                         │
+└───────────────────────────────────────┬─────────────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE EVENT GRID (Event-Driven)                           │
+│  • Order lifecycle events                                                   │
+│  • Payment events                                                           │
+│  • GDPR events                                                              │
+└───────────────────────────────────────┬─────────────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE FUNCTIONS (Serverless)                              │
+│  • Housekeeping Jobs:                                                        │
+│    - Data retention cleanup                                                  │
+│    - Old notification cleanup                                                │
+│    - Audit log archival                                                     │
+│    - GDPR data anonymization                                                │
+│    - Database maintenance                                                    │
+│  • Scheduled Tasks (Timer Triggers)                                         │
+│  • Event-Driven Tasks (Service Bus Triggers)                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE MONITOR & APPLICATION INSIGHTS                      │
+│  • Application performance monitoring                                        │
+│  • Distributed tracing                                                       │
+│  • Custom metrics                                                            │
+│  • Alert rules                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE LOG ANALYTICS WORKSPACE                             │
+│  • Centralized logging                                                       │
+│  • Log queries and analytics                                                 │
+│  • GDPR-compliant log retention                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE CONTAINER REGISTRY (ACR)                            │
+│  • Docker image storage                                                     │
+│  • CI/CD image builds                                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Azure Services Summary
+
+| Azure Service | Purpose | Usage |
+|--------------|---------|-------|
+| **Azure Kubernetes Service (AKS)** | Container orchestration | Hosts all Spring Boot microservices |
+| **Azure App Service** | Web hosting | Alternative frontend hosting option |
+| **Azure Static Web Apps** | Static web hosting | Frontend React application hosting |
+| **Azure Database for PostgreSQL** | Relational database | Primary data storage for all services |
+| **Azure Redis Cache** | In-memory cache | Session storage, data caching, rate limiting |
+| **Azure Key Vault** | Secrets management | Stores passwords, connection strings, certificates |
+| **Azure Service Bus** | Message broker | Asynchronous communication between services |
+| **Azure Event Grid** | Event routing | Event-driven architecture for real-time processing |
+| **Azure Functions** | Serverless compute | Housekeeping jobs, scheduled tasks, event processing |
+| **Application Insights** | Application monitoring | Performance monitoring, distributed tracing |
+| **Azure Monitor** | Infrastructure monitoring | Metrics, alerts, dashboards |
+| **Log Analytics Workspace** | Centralized logging | Log aggregation and analysis |
+| **Azure Container Registry (ACR)** | Container registry | Docker image storage for CI/CD |
+| **Entra ID** | Identity provider | Employee authentication |
+| **Entra External ID** | B2C identity provider | Client authentication |
+
+---
+
 ## 3. Component Architecture
 
 ### 3.1 Frontend Layer
@@ -328,9 +451,79 @@ All services deployed on AKS with:
 
 ---
 
-### 3.5 Integration Layer
+#### 3.4.2 Azure Redis Cache
+**Deployment**: Azure Cache for Redis (Standard tier)
 
-#### 3.5.1 Legacy SOAP Service Integration
+**Purpose**:
+- Session storage for user sessions
+- Data caching for frequently accessed data (products, customer profiles)
+- Rate limiting counters
+- Distributed locking for concurrent operations
+
+**Configuration**:
+- Standard tier (C1 - 1GB cache)
+- TLS 1.2+ required
+- Non-SSL port disabled
+- LRU eviction policy
+
+**Usage Patterns**:
+1. **Product Catalog Caching**
+   - Cache product details for 1 hour
+   - Invalidate on product updates
+
+2. **Session Management**
+   - Store user session data
+   - 24-hour TTL for sessions
+
+3. **Rate Limiting**
+   - Track API request counts per user
+   - Sliding window rate limiting
+
+4. **Distributed Locks**
+   - Prevent concurrent order processing
+   - Ensure idempotency
+
+---
+
+### 3.5 Serverless Functions Layer
+
+#### 3.5.1 Azure Functions (Housekeeping Jobs)
+**Deployment**: Azure Functions (Consumption Plan)
+
+**Functions**:
+
+1. **DataRetentionCleanup** (Timer Trigger - Daily at 2 AM UTC)
+   - Clean up old notifications (older than 90 days)
+   - Anonymize inactive customer data (older than 7 years)
+   - Archive old audit logs (older than 10 years)
+
+2. **DatabaseMaintenance** (Timer Trigger - Weekly on Sundays at 3 AM UTC)
+   - Run VACUUM ANALYZE on PostgreSQL
+   - Update table statistics
+   - Optimize database performance
+
+3. **GDPRDataAnonymization** (Service Bus Trigger)
+   - Process GDPR deletion requests
+   - Anonymize customer data across all services
+   - Archive anonymized data
+
+4. **NotificationCleanup** (Timer Trigger - Daily at 1 AM UTC)
+   - Remove read notifications older than 30 days
+   - Archive notification history
+
+**Technology**: Java 17, Azure Functions Java Library
+
+**Configuration**:
+- Consumption plan for cost efficiency
+- Application Insights integration
+- Connection to PostgreSQL and Redis Cache
+- Service Bus triggers for event-driven processing
+
+---
+
+### 3.6 Integration Layer
+
+#### 3.6.1 Legacy SOAP Service Integration
 **Service**: Product Service → Legacy ERP System
 
 **Implementation**:
@@ -345,7 +538,7 @@ All services deployed on AKS with:
 
 ---
 
-#### 3.5.2 External REST Service Integration
+#### 3.6.2 External REST Service Integration
 **Services**:
 1. **Payment Gateway** (Payment Service)
    - RESTful API integration

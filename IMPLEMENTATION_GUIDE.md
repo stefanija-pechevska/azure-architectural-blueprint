@@ -291,6 +291,111 @@ az servicebus topic create \
 
 ---
 
+## Phase 4.5: Azure Redis Cache Setup
+
+### Step 4.5.1: Create Redis Cache
+
+```bash
+# Create Redis Cache
+az redis create \
+  --resource-group rg-csom-platform-prod \
+  --name redis-csom-platform-prod \
+  --location westeurope \
+  --sku Standard \
+  --vm-size c1 \
+  --enable-non-ssl-port false \
+  --minimum-tls-version 1.2
+
+# Get Redis access keys
+az redis list-keys \
+  --resource-group rg-csom-platform-prod \
+  --name redis-csom-platform-prod
+
+# Store Redis primary key in Key Vault
+az keyvault secret set \
+  --vault-name kv-csom-platform-prod \
+  --name redis-primary-key \
+  --value "<redis-primary-key>"
+```
+
+### Step 4.5.2: Configure Redis Firewall (Optional)
+
+```bash
+# Allow access from AKS subnet (if needed)
+az redis firewall-rule create \
+  --resource-group rg-csom-platform-prod \
+  --name redis-csom-platform-prod \
+  --rule-name AllowAKS \
+  --start-ip-address 10.0.0.0 \
+  --end-ip-address 10.0.255.255
+```
+
+---
+
+## Phase 4.6: Azure Functions Setup
+
+### Step 4.6.1: Create Azure Functions App
+
+The Azure Functions app is created via the Bicep template, but you can also create it manually:
+
+```bash
+# Create Storage Account for Functions
+az storage account create \
+  --resource-group rg-csom-platform-prod \
+  --name funccsomplatformstor \
+  --location westeurope \
+  --sku Standard_LRS
+
+# Create Function App
+az functionapp create \
+  --resource-group rg-csom-platform-prod \
+  --name func-csom-platform-prod \
+  --storage-account funccsomplatformstor \
+  --consumption-plan-location westeurope \
+  --runtime java \
+  --runtime-version 17 \
+  --functions-version 4
+
+# Configure Function App settings
+az functionapp config appsettings set \
+  --resource-group rg-csom-platform-prod \
+  --name func-csom-platform-prod \
+  --settings \
+    POSTGRES_HOST="psql-csom-platform-prod.postgres.database.azure.com" \
+    POSTGRES_USER="csomadmin" \
+    REDIS_CACHE_HOST="redis-csom-platform-prod.redis.cache.windows.net" \
+    REDIS_CACHE_PORT="6380"
+```
+
+### Step 4.6.2: Deploy Housekeeping Functions
+
+```bash
+# Build and deploy Functions
+cd azure-functions/housekeeping-jobs
+mvn clean package
+mvn azure-functions:deploy
+
+# Or use Azure CLI
+func azure functionapp publish func-csom-platform-prod
+```
+
+### Step 4.6.3: Verify Functions
+
+```bash
+# List functions
+az functionapp function list \
+  --resource-group rg-csom-platform-prod \
+  --name func-csom-platform-prod
+
+# Test timer trigger (manually trigger for testing)
+az functionapp function show \
+  --resource-group rg-csom-platform-prod \
+  --name func-csom-platform-prod \
+  --function-name DataRetentionCleanup
+```
+
+---
+
 ## Phase 5: GitLab Repository Setup
 
 ### Step 5.1: Create GitLab Project Structure
