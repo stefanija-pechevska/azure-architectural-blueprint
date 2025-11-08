@@ -1,0 +1,46 @@
+---
+# Canary Deployment Configuration with Istio
+# This requires Istio service mesh to be installed in the cluster
+
+# DestinationRule for service subsets
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: order-service
+  namespace: production
+spec:
+  host: order-service
+  subsets:
+  - name: stable
+    labels:
+      version: stable
+  - name: canary
+    labels:
+      version: canary
+---
+# VirtualService for traffic splitting
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: order-service
+  namespace: production
+spec:
+  hosts:
+  - order-service
+  http:
+  # Route 90% traffic to stable, 10% to canary
+  - route:
+    - destination:
+        host: order-service
+        subset: stable
+      weight: 90
+    - destination:
+        host: order-service
+        subset: canary
+      weight: 10
+  # Gradually increase canary traffic by updating weights:
+  # Phase 1: 95% stable, 5% canary
+  # Phase 2: 75% stable, 25% canary
+  # Phase 3: 50% stable, 50% canary
+  # Phase 4: 0% stable, 100% canary (promote canary to stable)
+

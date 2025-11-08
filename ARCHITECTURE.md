@@ -37,6 +37,10 @@ This document outlines the technical architecture for a cloud-native, microservi
    - [Observability](#410-observability)
 5. [Security Architecture](#5-security-architecture)
 6. [Deployment Architecture](#6-deployment-architecture)
+   - [Azure Resources](#61-azure-resources)
+   - [GitLab CI/CD](#62-gitlab-cicd)
+   - [Kubernetes Deployment](#63-kubernetes-deployment)
+   - [Deployment Strategies](#64-deployment-strategies)
 7. [Scalability & Performance](#7-scalability--performance)
 8. [Disaster Recovery & Backup](#8-disaster-recovery--backup)
 9. [Cost Optimization](#9-cost-optimization)
@@ -1757,8 +1761,6 @@ This section outlines the deployment strategies used for safe, zero-downtime dep
 - Multi-environment management
 
 ---
-
-## 7. Scalability & Performance
 
 ## 7. Scalability & Performance
 

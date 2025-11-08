@@ -1,0 +1,121 @@
+---
+# Blue-Green Deployment Configuration for Order Service
+# Blue Deployment (Current Version)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service-blue
+  namespace: production
+  labels:
+    app: order-service
+    version: blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order-service
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: order-service
+        version: blue
+    spec:
+      containers:
+      - name: order-service
+        image: acrcsomplatform.azurecr.io/order-service:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: host
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+# Green Deployment (New Version)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service-green
+  namespace: production
+  labels:
+    app: order-service
+    version: green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order-service
+      version: green
+  template:
+    metadata:
+      labels:
+        app: order-service
+        version: green
+    spec:
+      containers:
+      - name: order-service
+        image: acrcsomplatform.azurecr.io/order-service:v2.0.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: host
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+# Service pointing to Blue (current)
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: production
+spec:
+  selector:
+    app: order-service
+    version: blue  # Switch to 'green' to activate new version
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP
+
