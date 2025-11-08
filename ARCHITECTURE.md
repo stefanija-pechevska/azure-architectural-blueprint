@@ -320,6 +320,10 @@ This diagram illustrates all Azure services used in the platform and their relat
 #### 3.2.1 Apigee API Management
 **Purpose**: API governance, security, rate limiting, analytics
 
+**Important**: All REST APIs are **exposed exclusively via Apigee**. The backend microservices are not directly accessible from the frontend applications. All API calls go through Apigee API proxies.
+
+**API Specification**: All REST APIs use **OpenAPI 3.0 specification** (Swagger). OpenAPI specs are generated from Spring Boot services using SpringDoc OpenAPI and published to Apigee Developer Portal.
+
 **API Proxies** (Two Separate Proxies):
 
 1. **External API Proxy** (for External Frontend Application)
@@ -328,6 +332,7 @@ This diagram illustrates all Azure services used in the platform and their relat
    - Rate limiting: 1000 req/min per client
    - CORS policies for external domain
    - Routes: `/api/v1/orders`, `/api/v1/products`, `/api/v1/customers/{id}`, `/api/v1/notifications`
+   - OpenAPI spec: `https://apigee.example.com/external-api/v1/openapi.json`
 
 2. **Internal API Proxy** (for Internal Frontend Application)
    - Routes to employee-facing services
@@ -335,8 +340,9 @@ This diagram illustrates all Azure services used in the platform and their relat
    - Higher rate limits for internal users (5000 req/min)
    - IP whitelisting for admin endpoints
    - Routes: `/api/v1/admin/*`, `/api/v1/orders/*`, `/api/v1/customers/*`, `/api/v1/analytics/*`
+   - OpenAPI spec: `https://apigee.example.com/internal-api/v1/openapi.json`
 
-**Note**: Both proxies can route to the same backend microservices, but with different authentication, rate limits, and access controls. The Notification Service endpoints are available through both proxies with appropriate authentication.
+**Note**: Both proxies route to the same backend microservices, but with different authentication, rate limits, and access controls. The backend services are not directly exposed - all access is through Apigee.
 
 **Policies**:
 - JWT validation (Entra ID for internal, Entra External ID for external)
@@ -345,6 +351,13 @@ This diagram illustrates all Azure services used in the platform and their relat
 - API versioning (v1, v2)
 - Request/response logging (GDPR compliant)
 - Separate rate limiting policies per proxy
+- OpenAPI spec validation and enforcement
+
+**API Documentation**:
+- OpenAPI specifications published to Apigee Developer Portal
+- Interactive API documentation (Swagger UI) available for both proxies
+- API versioning and deprecation policies
+- SDK generation from OpenAPI specs
 
 ---
 
@@ -356,6 +369,16 @@ All services deployed on AKS with:
 - Spring Security for JWT validation
 - PostgreSQL JDBC driver
 - Resilience4j for circuit breakers
+- **SpringDoc OpenAPI** for OpenAPI 3.0 specification generation
+- **OpenAPI annotations** for API documentation
+
+**API Exposure**: All REST endpoints are **exposed via Apigee only**. Services are not directly accessible from outside the AKS cluster. Apigee proxies forward requests to the backend services.
+
+**OpenAPI Specification**:
+- Each service generates OpenAPI 3.0 spec using SpringDoc OpenAPI
+- OpenAPI specs are published to Apigee Developer Portal
+- Specs include request/response schemas, authentication requirements, and examples
+- API documentation is auto-generated from OpenAPI specs
 
 #### 3.3.1 Order Service
 **Responsibilities**:
@@ -363,12 +386,14 @@ All services deployed on AKS with:
 - Order history retrieval
 - Order validation and business rules
 
-**Endpoints**:
+**REST API Endpoints** (exposed via Apigee):
 - `POST /api/v1/orders` - Create order
 - `GET /api/v1/orders/{id}` - Get order details
 - `GET /api/v1/orders` - List orders (with filters)
 - `PUT /api/v1/orders/{id}/status` - Update status
 - `DELETE /api/v1/orders/{id}` - Cancel order (GDPR compliant)
+
+**OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
 **Database**: `orders` schema in PostgreSQL
 - Tables: `orders`, `order_items`, `order_status_history`
@@ -386,12 +411,14 @@ All services deployed on AKS with:
 - Inventory tracking
 - Product search and filtering
 
-**Endpoints**:
+**REST API Endpoints** (exposed via Apigee):
 - `GET /api/v1/products` - List products
 - `GET /api/v1/products/{id}` - Get product details
-- `POST /api/v1/products` - Create product (internal)
-- `PUT /api/v1/products/{id}` - Update product (internal)
+- `POST /api/v1/products` - Create product (internal only)
+- `PUT /api/v1/products/{id}` - Update product (internal only)
 - `GET /api/v1/products/search` - Search products
+
+**OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
 **Database**: `products` schema in PostgreSQL
 - Tables: `products`, `product_categories`, `inventory`
@@ -408,12 +435,14 @@ All services deployed on AKS with:
 - GDPR data management (right to access, deletion)
 - Customer segmentation
 
-**Endpoints**:
+**REST API Endpoints** (exposed via Apigee):
 - `GET /api/v1/customers/{id}` - Get customer profile
 - `PUT /api/v1/customers/{id}` - Update profile
 - `POST /api/v1/customers/{id}/gdpr/export` - GDPR data export
 - `DELETE /api/v1/customers/{id}` - GDPR data deletion
 - `GET /api/v1/customers/{id}/orders` - Customer order history
+
+**OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
 **Database**: `customers` schema in PostgreSQL
 - Tables: `customers`, `customer_preferences`, `gdpr_audit_log`
@@ -431,11 +460,13 @@ All services deployed on AKS with:
 - SMS notifications
 - Notification preferences management
 
-**Endpoints**:
+**REST API Endpoints** (exposed via Apigee):
 - `GET /api/v1/notifications/stream` - WebSocket/SSE endpoint
 - `GET /api/v1/notifications` - Get notification history
-- `POST /api/v1/notifications` - Send notification (internal)
+- `POST /api/v1/notifications` - Send notification (internal only)
 - `PUT /api/v1/notifications/{id}/read` - Mark as read
+
+**OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
 **Database**: `notifications` schema in PostgreSQL
 - Tables: `notifications`, `notification_preferences`
@@ -453,10 +484,12 @@ All services deployed on AKS with:
 - Payment gateway integration
 - Payment history and reconciliation
 
-**Endpoints**:
+**REST API Endpoints** (exposed via Apigee):
 - `POST /api/v1/payments` - Process payment
 - `GET /api/v1/payments/{id}` - Get payment status
 - `POST /api/v1/payments/{id}/refund` - Process refund
+
+**OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
 **Database**: `payments` schema in PostgreSQL
 - Tables: `payments`, `payment_transactions`, `refunds`
@@ -474,10 +507,12 @@ All services deployed on AKS with:
 - Security audit trails
 - Activity logging
 
-**Endpoints**:
+**REST API Endpoints** (exposed via Apigee - Internal only):
 - `POST /api/v1/audit/logs` - Create audit log
-- `GET /api/v1/audit/logs` - Query audit logs (internal)
+- `GET /api/v1/audit/logs` - Query audit logs
 - `GET /api/v1/audit/gdpr/{customerId}` - GDPR audit trail
+
+**OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
 **Database**: `audit` schema in PostgreSQL
 - Tables: `audit_logs`, `gdpr_audit_trail`
@@ -803,6 +838,7 @@ All services deployed on AKS with:
 |-------|-----------|
 | Frontend | React 18+, Module Federation, TypeScript |
 | API Gateway | Apigee API Management |
+| API Specification | OpenAPI 3.0 (Swagger), SpringDoc OpenAPI |
 | Backend | Spring Boot 3.x, Java 17+ |
 | Database | PostgreSQL 15+ (Azure Flexible Server) |
 | Container Orchestration | Azure Kubernetes Service (AKS) |
