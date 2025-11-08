@@ -12,7 +12,17 @@ This document outlines the technical architecture for a cloud-native, microservi
 1. [System Overview](#1-system-overview)
    - [Business Domain](#11-business-domain)
    - [Key Requirements](#12-key-requirements)
-2. [Architecture Diagram](#2-architecture-diagram)
+2. [Non-Functional Requirements](#2-non-functional-requirements)
+   - [High Availability](#21-high-availability)
+   - [Scalability](#22-scalability)
+   - [Performance](#23-performance)
+   - [Reliability](#24-reliability)
+   - [Security](#25-security)
+   - [Maintainability](#26-maintainability)
+   - [Usability](#27-usability)
+   - [Compliance](#28-compliance)
+   - [Disaster Recovery](#29-disaster-recovery)
+3. [Architecture Diagram](#3-architecture-diagram)
    - [Azure Services Architecture Diagram](#21-azure-services-architecture-diagram)
 3. [Component Architecture](#3-component-architecture)
    - [Frontend Layer](#31-frontend-layer)
@@ -58,7 +68,390 @@ This document outlines the technical architecture for a cloud-native, microservi
 
 ---
 
-## 2. Architecture Diagram
+## 2. Non-Functional Requirements
+
+This section defines the non-functional requirements (NFRs) that the system must meet. These requirements focus on system qualities such as availability, scalability, performance, and reliability rather than specific functional features.
+
+### 2.1 High Availability
+
+**Requirement**: The system must maintain high availability with minimal downtime.
+
+**Target Metrics**:
+- **Uptime SLA**: 99.9% (maximum 43.8 minutes downtime per month)
+- **Planned Maintenance Window**: Maximum 4 hours per month (scheduled during low-traffic periods)
+- **Unplanned Downtime**: Maximum 0.1% (43.8 minutes per month)
+
+**Implementation Strategy**:
+
+1. **Multi-Region Deployment**
+   - Primary region: West Europe
+   - Secondary region: North Europe (for disaster recovery)
+   - Active-passive configuration with automatic failover
+
+2. **AKS High Availability**
+   - Multiple node pools across availability zones
+   - Pod anti-affinity rules to distribute replicas
+   - Minimum 3 replicas per service
+   - Health checks and automatic pod restart
+
+3. **Database High Availability**
+   - PostgreSQL Flexible Server with zone-redundant high availability
+   - Automated failover (RTO < 60 seconds)
+   - Read replicas for read-heavy workloads
+   - Automated backups with point-in-time recovery
+
+4. **API Gateway High Availability**
+   - Apigee: Multi-region deployment (if using Apigee X)
+   - Azure API Management: Premium tier with multi-region support
+   - Load balancing across gateway instances
+
+5. **Frontend High Availability**
+   - Azure Static Web Apps: Global CDN distribution
+   - Azure App Service: Multiple instances with auto-scaling
+   - Health monitoring and automatic instance replacement
+
+6. **Service Bus High Availability**
+   - Premium tier with zone-redundant configuration
+   - Message replication across availability zones
+
+**Monitoring**:
+- Azure Monitor alerts for service unavailability
+- Application Insights availability tests
+- Automated incident response procedures
+
+---
+
+### 2.2 Scalability
+
+**Requirement**: The system must scale horizontally and vertically to handle varying loads.
+
+**Target Metrics**:
+- **Concurrent Users**: Support 10,000 concurrent external users and 1,000 concurrent internal users
+- **API Requests**: Handle 100,000 requests per minute (peak)
+- **Database Connections**: Support 1,000 concurrent database connections
+- **Message Throughput**: Process 50,000 messages per minute
+
+**Implementation Strategy**:
+
+1. **Horizontal Scaling (AKS)**
+   - **Cluster Autoscaling**: Automatically scale node pools based on demand
+   - **Pod Autoscaling (HPA)**: Scale pods based on CPU (70% threshold) and memory (80% threshold)
+   - **Custom Metrics**: Scale based on queue depth, request rate, or custom business metrics
+   - **Target Replicas**: Minimum 3, maximum 20 per service
+
+2. **Database Scaling**
+   - **Read Replicas**: Up to 5 read replicas for read-heavy workloads
+   - **Vertical Scaling**: Scale compute and storage independently
+   - **Connection Pooling**: PgBouncer for efficient connection management
+   - **Partitioning**: Table partitioning for large datasets (orders, audit logs)
+
+3. **Caching Strategy**
+   - **Redis Cache**: Cache frequently accessed data (products, customer profiles)
+   - **CDN**: Azure Front Door for static assets and API responses
+   - **Application-Level Caching**: In-memory caching in Spring Boot services
+
+4. **API Gateway Scaling**
+   - **Apigee**: Auto-scaling based on traffic
+   - **Azure API Management**: Scale units based on capacity (Standard: 1-4 units, Premium: 1-12 units)
+
+5. **Message Queue Scaling**
+   - **Service Bus**: Premium tier with auto-scaling
+   - **Partitioning**: Partition topics for parallel processing
+   - **Consumer Scaling**: Multiple consumers per subscription
+
+6. **Frontend Scaling**
+   - **Static Web Apps**: Automatic global CDN scaling
+   - **App Service**: Auto-scaling based on CPU, memory, or HTTP queue length
+
+**Scaling Triggers**:
+- CPU utilization > 70% for 5 minutes
+- Memory utilization > 80% for 5 minutes
+- Request queue length > 100
+- Response time > 500ms (p95)
+- Custom business metrics (e.g., order queue depth)
+
+---
+
+### 2.3 Performance
+
+**Requirement**: The system must meet specified performance targets for response times and throughput.
+
+**Target Metrics**:
+
+| Component | Metric | Target | Measurement |
+|-----------|--------|--------|-------------|
+| **API Response Time** | P50 (median) | < 100ms | 95% of requests |
+| | P95 | < 200ms | 95% of requests |
+| | P99 | < 500ms | 99% of requests |
+| **Frontend Load Time** | Initial page load | < 2 seconds | Time to First Byte (TTFB) |
+| | Time to Interactive | < 3 seconds | Full page interactive |
+| **Database Query Time** | P95 | < 100ms | Query execution time |
+| **Message Processing** | End-to-end latency | < 1 second | Event publish to processing |
+| **Authentication** | Token validation | < 50ms | JWT validation time |
+| **Throughput** | API requests/sec | 1,000+ | Sustained throughput |
+
+**Implementation Strategy**:
+
+1. **API Performance**
+   - Response caching for read-heavy endpoints
+   - Database query optimization (indexes, query tuning)
+   - Connection pooling (HikariCP for Spring Boot)
+   - Async processing for non-critical operations
+
+2. **Frontend Performance**
+   - Code splitting and lazy loading
+   - Image optimization and CDN delivery
+   - Service Worker for offline support
+   - Bundle size optimization (< 500KB initial load)
+
+3. **Database Performance**
+   - Index optimization on frequently queried columns
+   - Query plan analysis and optimization
+   - Read replicas for read-heavy queries
+   - Connection pooling (PgBouncer)
+
+4. **Caching Strategy**
+   - Redis cache for hot data (TTL: 1 hour)
+   - Application-level caching (Caffeine cache)
+   - HTTP response caching (Cache-Control headers)
+
+5. **Monitoring**
+   - Application Insights for performance monitoring
+   - Custom metrics and dashboards
+   - Performance regression detection
+   - Load testing in staging environment
+
+---
+
+### 2.4 Reliability
+
+**Requirement**: The system must operate reliably with minimal errors and automatic recovery.
+
+**Target Metrics**:
+- **Error Rate**: < 0.1% (99.9% success rate)
+- **MTBF (Mean Time Between Failures)**: > 720 hours (30 days)
+- **MTTR (Mean Time To Recovery)**: < 15 minutes
+- **Data Consistency**: 100% (no data loss)
+
+**Implementation Strategy**:
+
+1. **Error Handling**
+   - Comprehensive error handling in all services
+   - Graceful degradation for non-critical features
+   - Circuit breakers (Resilience4j) for external service calls
+   - Retry logic with exponential backoff
+
+2. **Data Reliability**
+   - Database transactions for data consistency
+   - Idempotency keys for critical operations
+   - Event sourcing for audit trails
+   - Automated backups (daily) with 35-day retention
+
+3. **Service Reliability**
+   - Health checks and automatic restart
+   - Liveness and readiness probes in Kubernetes
+   - Dead letter queues for failed messages
+   - Transactional outbox pattern for reliable messaging
+
+4. **Monitoring and Alerting**
+   - Real-time error monitoring (Application Insights)
+   - Automated alerts for error rate thresholds
+   - Error tracking and analysis
+   - Incident response procedures
+
+---
+
+### 2.5 Security
+
+**Requirement**: The system must implement comprehensive security measures to protect data and services.
+
+**Target Metrics**:
+- **Security Incidents**: Zero critical security incidents
+- **Vulnerability Remediation**: Critical vulnerabilities patched within 24 hours
+- **Access Control**: 100% authenticated and authorized access
+- **Data Encryption**: 100% encryption at rest and in transit
+
+**Implementation Strategy**:
+
+1. **Authentication & Authorization**
+   - JWT-based authentication (Entra ID / External ID)
+   - Role-based access control (RBAC)
+   - API key management for service-to-service communication
+   - Multi-factor authentication (MFA) for internal users
+
+2. **Data Protection**
+   - Encryption at rest (Azure managed keys)
+   - Encryption in transit (TLS 1.2+)
+   - PII data masking in logs
+   - Secrets management (Azure Key Vault or HashiCorp Vault)
+
+3. **Network Security**
+   - Private AKS cluster with private endpoints
+   - Network policies for pod-to-pod communication
+   - Azure Firewall for egress traffic control
+   - DDoS protection (Azure DDoS Protection Standard)
+
+4. **Application Security**
+   - OWASP Top 10 protection
+   - Input validation and sanitization
+   - SQL injection prevention (parameterized queries)
+   - XSS and CSRF protection
+
+5. **Compliance**
+   - GDPR compliance (data export, deletion, audit)
+   - Security audit logging
+   - Regular security assessments
+   - Penetration testing (annual)
+
+---
+
+### 2.6 Maintainability
+
+**Requirement**: The system must be maintainable with clear documentation, monitoring, and operational procedures.
+
+**Target Metrics**:
+- **Deployment Time**: < 30 minutes for full deployment
+- **Incident Resolution**: 80% of incidents resolved within SLA
+- **Documentation Coverage**: 100% of APIs and services documented
+- **Code Coverage**: > 80% unit test coverage
+
+**Implementation Strategy**:
+
+1. **Code Quality**
+   - Code reviews for all changes
+   - Automated testing (unit, integration, E2E)
+   - Static code analysis (SonarQube)
+   - Consistent coding standards
+
+2. **Documentation**
+   - API documentation (OpenAPI/Swagger)
+   - Architecture documentation
+   - Runbooks for operations
+   - Deployment guides
+
+3. **Monitoring & Observability**
+   - Centralized logging (Azure Log Analytics)
+   - Distributed tracing (Application Insights)
+   - Custom dashboards
+   - Alert rules and notifications
+
+4. **CI/CD**
+   - Automated builds and tests
+   - Automated deployments
+   - Rollback procedures
+   - Blue-green deployments
+
+---
+
+### 2.7 Usability
+
+**Requirement**: The system must provide an intuitive and responsive user experience.
+
+**Target Metrics**:
+- **User Satisfaction**: > 4.0/5.0 rating
+- **Task Completion Rate**: > 95%
+- **Error Recovery**: Users can recover from errors without support
+- **Accessibility**: WCAG 2.1 AA compliance
+
+**Implementation Strategy**:
+
+1. **User Interface**
+   - Responsive design (mobile, tablet, desktop)
+   - Intuitive navigation
+   - Consistent design system
+   - Loading states and progress indicators
+
+2. **Error Handling**
+   - Clear error messages
+   - Helpful error recovery suggestions
+   - Validation feedback
+   - Graceful error handling
+
+3. **Performance**
+   - Fast page loads (< 2 seconds)
+   - Smooth interactions (60 FPS)
+   - Optimistic UI updates
+   - Progressive loading
+
+4. **Accessibility**
+   - Keyboard navigation
+   - Screen reader support
+   - Color contrast compliance
+   - ARIA labels
+
+---
+
+### 2.8 Compliance
+
+**Requirement**: The system must comply with relevant regulations and standards.
+
+**Target Metrics**:
+- **GDPR Compliance**: 100% compliance with GDPR requirements
+- **Audit Trail**: 100% of critical operations logged
+- **Data Retention**: Compliance with data retention policies
+- **Privacy**: User consent management
+
+**Implementation Strategy**:
+
+1. **GDPR Compliance**
+   - Right to access (data export)
+   - Right to erasure (data deletion)
+   - Right to rectification (data updates)
+   - Consent management
+   - Data breach notification procedures
+
+2. **Audit Logging**
+   - Comprehensive audit trails
+   - Immutable audit logs
+   - 10-year retention for audit logs
+   - Secure storage and access control
+
+3. **Data Protection**
+   - Data minimization
+   - Privacy by design
+   - Encryption of sensitive data
+   - Access controls and monitoring
+
+---
+
+### 2.9 Disaster Recovery
+
+**Requirement**: The system must have robust disaster recovery procedures to minimize data loss and downtime.
+
+**Target Metrics**:
+- **RPO (Recovery Point Objective)**: < 1 hour (maximum data loss)
+- **RTO (Recovery Time Objective)**: < 4 hours (maximum downtime)
+- **Backup Frequency**: Daily automated backups
+- **Backup Retention**: 35 days (point-in-time recovery)
+
+**Implementation Strategy**:
+
+1. **Backup Strategy**
+   - Daily automated database backups
+   - Geo-redundant backup storage
+   - Point-in-time recovery capability
+   - Configuration backup (Infrastructure as Code)
+
+2. **Disaster Recovery Plan**
+   - Documented DR procedures
+   - Regular DR drills (quarterly)
+   - Multi-region deployment
+   - Automated failover procedures
+
+3. **Data Replication**
+   - Database geo-replication
+   - Service Bus message replication
+   - Key Vault backup and restore
+
+4. **Recovery Procedures**
+   - Step-by-step recovery runbooks
+   - Recovery testing procedures
+   - Communication plan
+   - Post-incident review process
+
+---
+
+## 3. Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -130,7 +523,7 @@ This document outlines the technical architecture for a cloud-native, microservi
 
 ---
 
-## 2.1 Azure Services Architecture Diagram
+## 3.1 Azure Services Architecture Diagram
 
 This diagram illustrates all Azure services used in the platform and their relationships:
 
@@ -262,9 +655,9 @@ This diagram illustrates all Azure services used in the platform and their relat
 
 ---
 
-## 3. Component Architecture
+## 4. Component Architecture
 
-### 3.1 Frontend Layer
+### 4.1 Frontend Layer
 
 **Important**: There are **two separate frontend applications** - one for external clients and one for internal employees. They are completely independent and do not call each other.
 
@@ -327,7 +720,7 @@ This diagram illustrates all Azure services used in the platform and their relat
 
 ---
 
-### 3.2 API Gateway Layer
+### 4.2 API Gateway Layer
 
 **API Gateway Options**: This architecture supports two API gateway solutions:
 1. **Apigee API Management** (Google Cloud) - See `apigee/` directory
@@ -418,7 +811,7 @@ For a detailed comparison, see [API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARI
 
 ---
 
-### 3.3 Microservices Layer (Spring Boot)
+### 4.3 Microservices Layer (Spring Boot)
 
 All services deployed on AKS with:
 - Spring Boot 3.x
@@ -438,7 +831,7 @@ All services deployed on AKS with:
 - API documentation is auto-generated from OpenAPI specs
 - OpenAPI specs can be imported into either Apigee or Azure API Management
 
-#### 3.3.1 Order Service
+#### 4.3.1 Order Service
 **Responsibilities**:
 - Order creation, updates, status tracking
 - Order history retrieval
@@ -581,7 +974,7 @@ All services deployed on AKS with:
 
 ---
 
-### 3.4 Data Layer
+### 4.4 Data Layer
 
 #### 3.4.1 PostgreSQL Database
 **Deployment**: Azure Database for PostgreSQL Flexible Server
@@ -634,7 +1027,7 @@ All services deployed on AKS with:
 
 ---
 
-### 3.5 Secrets Management Layer
+### 4.5 Secrets Management Layer
 
 **Secrets Management Options**: This architecture supports two secrets management solutions:
 1. **Azure Key Vault** (Azure) - See `infrastructure/bicep/main.bicep` for Key Vault resource
@@ -698,7 +1091,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-### 3.6 Serverless Functions Layer
+### 4.6 Serverless Functions Layer
 
 #### 3.6.1 Azure Functions (Housekeeping Jobs)
 **Deployment**: Azure Functions (Consumption Plan)
@@ -734,7 +1127,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-### 3.6 Integration Layer
+### 4.7 Integration Layer
 
 #### 3.6.1 Legacy SOAP Service Integration
 **Service**: Product Service → Legacy ERP System
@@ -764,7 +1157,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-### 3.6 Messaging & Events
+### 4.8 Messaging & Events
 
 #### 3.6.1 Azure Service Bus
 **Purpose**: Asynchronous communication between services
@@ -792,7 +1185,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-### 3.7 Authentication & Authorization
+### 4.9 Authentication & Authorization
 
 #### 3.7.1 Entra ID (Azure AD) - Employees
 **Configuration**:
@@ -826,7 +1219,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-### 3.8 Observability
+### 4.10 Observability
 
 #### 3.8.1 Azure Monitor
 - Application Insights for all services
@@ -845,7 +1238,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-## 4. Security Architecture
+## 5. Security Architecture
 
 ### 4.1 Network Security
 - AKS private cluster with private endpoints
@@ -875,7 +1268,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-## 5. Deployment Architecture
+## 6. Deployment Architecture
 
 ### 5.1 Azure Resources
 - **AKS Cluster**: Kubernetes 1.28+, 3 node pools (system, user, compute)
@@ -907,7 +1300,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-## 6. Scalability & Performance
+## 7. Scalability & Performance
 
 ### 6.1 Horizontal Scaling
 - AKS cluster autoscaling
@@ -926,7 +1319,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-## 7. Disaster Recovery & Backup
+## 8. Disaster Recovery & Backup
 
 ### 7.1 Backup Strategy
 - PostgreSQL: Automated daily backups, 35-day retention
@@ -940,7 +1333,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-## 8. Cost Optimization
+## 9. Cost Optimization
 
 ### 8.1 Resource Sizing
 - Right-sized AKS node pools
@@ -954,7 +1347,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-## 9. Technology Stack Summary
+## 10. Technology Stack Summary
 
 | Layer | Technology |
 |-------|-----------|
@@ -973,7 +1366,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-## 10. Next Steps
+## 11. Next Steps
 
 1. Review and approve architecture
 2. Set up Azure subscription and resource groups
