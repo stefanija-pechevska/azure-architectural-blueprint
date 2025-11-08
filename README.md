@@ -12,6 +12,7 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - **React-based web application** with microfrontends architecture
 - **Spring Boot/Java REST microservices** deployed on Azure Kubernetes Service (AKS)
 - **PostgreSQL database** for persistent storage
+- **Azure Blob Storage** for file archiving and long-term storage
 - **Entra ID JWT authentication** for employees
 - **Entra External ID** for client authentication
 - **Apigee API Management** or **Azure API Management** for API governance
@@ -51,6 +52,14 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
          │
 ┌────────▼────────┐
 │  PostgreSQL     │  (Azure Flexible Server)
+└─────────────────┘
+
+┌─────────────────┐
+│  Azure Blob     │  (Archiving & Storage)
+│  Storage        │
+│  • Archive      │
+│  • Audit Logs   │
+│  • GDPR Data    │
 └─────────────────┘
 ```
 
@@ -261,6 +270,7 @@ azure-architectural-blueprint/
 - **Data Encryption**: Encryption at rest and in transit
 - **Secrets Management**: Azure Key Vault
 - **Network Security**: Private AKS cluster, network policies
+- **File Archiving**: Azure Blob Storage with lifecycle management
 
 ---
 
@@ -323,6 +333,7 @@ See [GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md) for detailed implementation.
 - **Database Scaling**: Read replicas for read-heavy workloads
 - **Caching**: Redis Cache for frequently accessed data
 - **CDN**: Azure Front Door for static assets
+- **Archiving**: Azure Blob Storage with automated lifecycle management for cost optimization
 
 ---
 

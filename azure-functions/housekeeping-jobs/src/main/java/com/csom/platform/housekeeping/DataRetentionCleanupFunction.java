@@ -84,13 +84,16 @@ public class DataRetentionCleanupFunction {
     }
     
     private void archiveOldAuditLogs(Connection conn, ExecutionContext context) throws SQLException {
-        // In production, this would move data to cold storage (Azure Blob Storage)
+        // Archive old audit logs to Blob Storage before deletion
+        // This is handled by the AuditLogArchivalFunction which runs separately
+        // Here we only delete logs that are older than 7 years (after archival)
         String sql = "DELETE FROM audit.audit_logs " +
-                     "WHERE created_at < NOW() - INTERVAL '10 years'";
+                     "WHERE created_at < NOW() - INTERVAL '7 years' " +
+                     "AND archived = true";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            int archived = stmt.executeUpdate();
-            context.getLogger().info("Archived " + archived + " old audit logs");
+            int deleted = stmt.executeUpdate();
+            context.getLogger().info("Deleted " + deleted + " archived audit logs older than 7 years");
         }
     }
 }

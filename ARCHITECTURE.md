@@ -608,11 +608,22 @@ This diagram illustrates all Azure services used in the platform and their relat
 │  • Housekeeping Jobs:                                                        │
 │    - Data retention cleanup                                                  │
 │    - Old notification cleanup                                                │
-│    - Audit log archival                                                     │
+│    - Audit log archival to Blob Storage                                     │
 │    - GDPR data anonymization                                                │
 │    - Database maintenance                                                    │
+│    - File archiving to Blob Storage                                         │
 │  • Scheduled Tasks (Timer Triggers)                                         │
 │  • Event-Driven Tasks (Service Bus Triggers)                                 │
+└───────────────────────────────────────┬─────────────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE BLOB STORAGE (Archiving)                            │
+│  • archive container - Archived files and documents                         │
+│  • audit-logs container - Archived audit logs for compliance                │
+│  • gdpr-data container - GDPR export and anonymized data                    │
+│  • customer-documents container - Customer documents and attachments        │
+│  • Lifecycle management - Auto-tiering (Hot → Cool → Archive)               │
+│  • Automated deletion after retention period (7 years)                      │
 └─────────────────────────────────────────────────────────────────────────────┘
                                         │
 ┌───────────────────────────────────────▼─────────────────────────────────────┐
@@ -646,10 +657,11 @@ This diagram illustrates all Azure services used in the platform and their relat
 | **Azure Static Web Apps** | Static web hosting | External frontend application (client-facing) |
 | **Azure Database for PostgreSQL** | Relational database | Primary data storage for all services |
 | **Azure Redis Cache** | In-memory cache | Session storage, data caching, rate limiting |
+| **Azure Blob Storage** | Object storage | File archiving, audit logs, GDPR data, customer documents |
 | **Azure Key Vault** | Secrets management | Stores passwords, connection strings, certificates (or HashiCorp Vault as alternative) |
 | **Azure Service Bus** | Message broker | Asynchronous communication between services |
 | **Azure Event Grid** | Event routing | Event-driven architecture for real-time processing |
-| **Azure Functions** | Serverless compute | Housekeeping jobs, scheduled tasks, event processing |
+| **Azure Functions** | Serverless compute | Housekeeping jobs, scheduled tasks, event processing, file archiving |
 | **Application Insights** | Application monitoring | Performance monitoring, distributed tracing |
 | **Azure Monitor** | Infrastructure monitoring | Metrics, alerts, dashboards |
 | **Log Analytics Workspace** | Centralized logging | Log aggregation and analysis |
@@ -1031,6 +1043,84 @@ All services deployed on AKS with:
 
 ---
 
+#### 4.4.3 Azure Blob Storage
+**Deployment**: Azure Storage Account (StorageV2) with Blob Storage
+
+**Purpose**:
+- Long-term file archiving for compliance and retention
+- Storage of audit logs and audit trails
+- GDPR data export and anonymized data storage
+- Customer documents and attachments
+- Automated lifecycle management with cost optimization
+
+**Configuration**:
+- Storage Account: Standard LRS (Locally Redundant Storage)
+- Access Tier: Hot (frequently accessed), Cool (infrequently accessed), Archive (rarely accessed)
+- TLS 1.2+ required
+- Public access disabled
+- Soft delete enabled (7 days retention)
+- Container delete retention enabled (7 days)
+
+**Containers**:
+1. **archive** - General archived files and documents
+   - Lifecycle: Hot → Cool (30 days) → Archive (90 days) → Delete (7 years)
+   
+2. **audit-logs** - Archived audit logs for compliance
+   - Lifecycle: Hot → Delete after 7 years (GDPR compliance)
+   
+3. **gdpr-data** - GDPR export and anonymized data
+   - Lifecycle: Hot → Cool (30 days) → Archive (90 days) → Delete (7 years)
+   
+4. **customer-documents** - Customer documents and attachments
+   - Lifecycle: Hot → Cool (30 days) → Archive (90 days) → Delete (7 years)
+
+**Lifecycle Management Policies**:
+- **Automatic Tiering**: Files automatically move from Hot to Cool tier after 30 days, then to Archive tier after 90 days
+- **Automatic Deletion**: Files are automatically deleted after 7 years (2555 days) for GDPR compliance
+- **Cost Optimization**: Reduces storage costs by moving infrequently accessed data to cheaper tiers
+
+**Usage Patterns**:
+1. **Audit Log Archival**
+   - Archive old audit logs from PostgreSQL to Blob Storage
+   - Maintain 7-year retention for compliance
+   - Automated archival via Azure Functions
+
+2. **GDPR Data Export**
+   - Export customer data to Blob Storage on request
+   - Store anonymized data for analytics
+   - Secure access with SAS tokens
+
+3. **Customer Documents**
+   - Store customer-uploaded documents
+   - Archive order-related documents (invoices, receipts)
+   - Lifecycle management for cost optimization
+
+4. **File Archiving**
+   - Archive old files from application storage
+   - Move files to archive tier after inactivity
+   - Automated cleanup after retention period
+
+**Integration**:
+- **Azure Functions**: Automated archival jobs move data from PostgreSQL/application storage to Blob Storage
+- **Spring Boot Services**: Direct integration using Azure Storage SDK for Java
+- **Key Vault**: Store connection strings and SAS tokens securely
+- **Managed Identity**: Authenticate to Blob Storage using Azure Managed Identity (recommended)
+
+**Security**:
+- Private endpoints for secure access (optional)
+- Role-Based Access Control (RBAC) for container access
+- Shared Access Signatures (SAS) for temporary access
+- Encryption at rest (Azure managed keys)
+- Encryption in transit (TLS 1.2+)
+
+**Cost Optimization**:
+- Hot tier: $0.0184 per GB/month (frequently accessed)
+- Cool tier: $0.01 per GB/month (infrequently accessed)
+- Archive tier: $0.00099 per GB/month (rarely accessed)
+- Lifecycle policies automatically optimize costs by tiering data
+
+---
+
 ### 4.5 Secrets Management Layer
 
 **Secrets Management Options**: This architecture supports two secrets management solutions:
@@ -1105,21 +1195,28 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 1. **DataRetentionCleanup** (Timer Trigger - Daily at 2 AM UTC)
    - Clean up old notifications (older than 90 days)
    - Anonymize inactive customer data (older than 7 years)
-   - Archive old audit logs (older than 10 years)
+   - Delete archived audit logs older than 7 years (after archival to Blob Storage)
 
-2. **DatabaseMaintenance** (Timer Trigger - Weekly on Sundays at 3 AM UTC)
+2. **AuditLogArchival** (Timer Trigger - Daily at 3 AM UTC)
+   - Archive audit logs older than 1 year to Azure Blob Storage
+   - Group logs by date for efficient storage
+   - Mark logs as archived in database
+   - Store in `audit-logs` container with lifecycle management
+
+3. **DatabaseMaintenance** (Timer Trigger - Weekly on Sundays at 3 AM UTC)
    - Run VACUUM ANALYZE on PostgreSQL
    - Update table statistics
    - Optimize database performance
 
-3. **GDPRDataAnonymization** (Service Bus Trigger)
+4. **GDPRDataAnonymization** (Service Bus Trigger)
    - Process GDPR deletion requests
    - Anonymize customer data across all services
-   - Archive anonymized data
+   - Archive anonymized data to Blob Storage (`gdpr-data` container)
+   - Export customer data to Blob Storage on request
 
-4. **NotificationCleanup** (Timer Trigger - Daily at 1 AM UTC)
+5. **NotificationCleanup** (Timer Trigger - Daily at 1 AM UTC)
    - Remove read notifications older than 30 days
-   - Archive notification history
+   - Archive notification history to Blob Storage if needed
 
 **Technology**: Java 17, Azure Functions Java Library
 
@@ -1127,7 +1224,14 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 - Consumption plan for cost efficiency
 - Application Insights integration
 - Connection to PostgreSQL and Redis Cache
+- Connection to Azure Blob Storage for archiving
 - Service Bus triggers for event-driven processing
+
+**Blob Storage Integration**:
+- Automated archival of audit logs to Blob Storage
+- GDPR data export and anonymization storage
+- Customer document archiving
+- Lifecycle management policies for cost optimization
 
 ---
 

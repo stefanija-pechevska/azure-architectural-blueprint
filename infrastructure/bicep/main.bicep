@@ -32,6 +32,9 @@ param redisCacheName string = 'redis-csom-platform-prod'
 @description('Azure Functions App name')
 param functionsAppName string = 'func-csom-platform-prod'
 
+@description('Blob Storage account name for archiving')
+param blobStorageAccountName string = 'stcsomarchiveprod'
+
 // Resource Group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
@@ -248,6 +251,10 @@ resource functionsApp 'Microsoft.Web/sites@2023-01-01' = {
           value: 'Connection string should be set from Key Vault'
         }
         {
+          name: 'BLOB_STORAGE_CONNECTION_STRING'
+          value: 'Connection string should be set from Key Vault'
+        }
+        {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
           value: appInsights.properties.InstrumentationKey
         }
@@ -255,6 +262,143 @@ resource functionsApp 'Microsoft.Web/sites@2023-01-01' = {
       javaVersion: '17'
     }
     httpsOnly: true
+  }
+}
+
+// Storage Account for Archiving (Blob Storage)
+resource blobStorageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: toLower(blobStorageAccountName)
+  location: location
+  kind: 'StorageV2'
+  sku: {
+    name: 'Standard_LRS'
+  }
+  properties: {
+    supportsHttpsTrafficOnly: true
+    minimumTlsVersion: 'TLS1_2'
+    accessTier: 'Hot'
+    allowBlobPublicAccess: false
+    networkAcls: {
+      defaultAction: 'Allow'
+    }
+  }
+}
+
+// Blob Service with Lifecycle Management
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  parent: blobStorageAccount
+  name: 'default'
+  properties: {
+    deleteRetentionPolicy: {
+      enabled: true
+      days: 7
+    }
+    containerDeleteRetentionPolicy: {
+      enabled: true
+      days: 7
+    }
+    cors: {
+      corsRules: []
+    }
+  }
+}
+
+// Lifecycle Management Policy for Archiving
+resource lifecyclePolicy 'Microsoft.Storage/storageAccounts/blobServices/managementPolicies@2023-01-01' = {
+  parent: blobService
+  name: 'default'
+  properties: {
+    policy: {
+      rules: [
+        {
+          name: 'ArchiveToCoolAfter30Days'
+          enabled: true
+          type: 'Lifecycle'
+          definition: {
+            filters: {
+              blobTypes: ['blockBlob']
+              prefixMatch: ['archive/']
+            }
+            actions: {
+              baseBlob: {
+                tierToCool: {
+                  daysAfterModificationGreaterThan: 30
+                }
+                tierToArchive: {
+                  daysAfterModificationGreaterThan: 90
+                }
+                delete: {
+                  daysAfterModificationGreaterThan: 2555 // 7 years
+                }
+              }
+            }
+          }
+        }
+        {
+          name: 'DeleteOldAuditLogs'
+          enabled: true
+          type: 'Lifecycle'
+          definition: {
+            filters: {
+              blobTypes: ['blockBlob']
+              prefixMatch: ['audit-logs/']
+            }
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterModificationGreaterThan: 2555 // 7 years for GDPR compliance
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+// Archive Containers
+resource archiveContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'archive'
+  properties: {
+    publicAccess: 'None'
+    metadata: {
+      description: 'Archived files and documents'
+    }
+  }
+}
+
+resource auditLogsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'audit-logs'
+  properties: {
+    publicAccess: 'None'
+    metadata: {
+      description: 'Archived audit logs for compliance'
+    }
+  }
+}
+
+resource gdprDataContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'gdpr-data'
+  properties: {
+    publicAccess: 'None'
+    metadata: {
+      description: 'GDPR export and anonymized data'
+    }
+  }
+}
+
+resource customerDocumentsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'customer-documents'
+  properties: {
+    publicAccess: 'None'
+    metadata: {
+      description: 'Customer documents and attachments'
+    }
   }
 }
 
@@ -269,4 +413,7 @@ output redisCachePort string = string(redisCache.properties.port)
 output redisCachePrimaryKey string = redisCache.listKeys().primaryKey
 output functionsAppName string = functionsApp.name
 output functionsAppUrl string = 'https://${functionsApp.properties.defaultHostName}'
+output blobStorageAccountName string = blobStorageAccount.name
+output blobStorageAccountKey string = blobStorageAccount.listKeys().keys[0].value
+output blobStorageConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${blobStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${blobStorageAccount.listKeys().keys[0].value}'
 

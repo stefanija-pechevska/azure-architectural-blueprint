@@ -13,6 +13,7 @@ This guide provides detailed steps to implement the PoC system from scratch.
 - [Phase 4: Azure Service Bus Setup](#phase-4-azure-service-bus-setup)
 - [Phase 4.5: Azure Redis Cache Setup](#phase-45-azure-redis-cache-setup)
 - [Phase 4.6: Azure Functions Setup](#phase-46-azure-functions-setup)
+- [Phase 4.7: Azure Blob Storage Setup](#phase-47-azure-blob-storage-setup)
 - [Phase 5: GitLab Repository Setup](#phase-5-gitlab-repository-setup)
 - [Phase 6: Backend Services Development](#phase-6-backend-services-development)
 - [Phase 7: Frontend Development](#phase-7-frontend-development)
@@ -388,7 +389,8 @@ az functionapp config appsettings set \
     POSTGRES_HOST="psql-csom-platform-prod.postgres.database.azure.com" \
     POSTGRES_USER="csomadmin" \
     REDIS_CACHE_HOST="redis-csom-platform-prod.redis.cache.windows.net" \
-    REDIS_CACHE_PORT="6380"
+    REDIS_CACHE_PORT="6380" \
+    BLOB_STORAGE_CONNECTION_STRING="@Microsoft.KeyVault(SecretUri=https://kv-csom-platform-prod.vault.azure.net/secrets/blob-storage-connection-string/)"
 ```
 
 ### Step 4.6.2: Deploy Housekeeping Functions
@@ -416,6 +418,223 @@ az functionapp function show \
   --resource-group rg-csom-platform-prod \
   --name func-csom-platform-prod \
   --function-name DataRetentionCleanup
+```
+
+---
+
+## Phase 4.7: Azure Blob Storage Setup
+
+### Step 4.7.1: Create Blob Storage Account
+
+The Blob Storage account is created via the Bicep template, but you can also create it manually:
+
+```bash
+# Create Storage Account for Archiving
+az storage account create \
+  --resource-group rg-csom-platform-prod \
+  --name stcsomarchiveprod \
+  --location westeurope \
+  --sku Standard_LRS \
+  --kind StorageV2 \
+  --access-tier Hot \
+  --allow-blob-public-access false \
+  --min-tls-version TLS1_2
+
+# Enable soft delete for blobs
+az storage blob service-properties update \
+  --account-name stcsomarchiveprod \
+  --enable-delete-retention true \
+  --delete-retention-days 7
+
+# Enable container delete retention
+az storage blob service-properties update \
+  --account-name stcsomarchiveprod \
+  --enable-container-delete-retention true \
+  --container-delete-retention-days 7
+```
+
+### Step 4.7.2: Create Blob Containers
+
+```bash
+# Create archive containers
+az storage container create \
+  --account-name stcsomarchiveprod \
+  --name archive \
+  --public-access off
+
+az storage container create \
+  --account-name stcsomarchiveprod \
+  --name audit-logs \
+  --public-access off
+
+az storage container create \
+  --account-name stcsomarchiveprod \
+  --name gdpr-data \
+  --public-access off
+
+az storage container create \
+  --account-name stcsomarchiveprod \
+  --name customer-documents \
+  --public-access off
+```
+
+### Step 4.7.3: Configure Lifecycle Management Policy
+
+```bash
+# Get storage account key
+STORAGE_ACCOUNT_KEY=$(az storage account keys list \
+  --resource-group rg-csom-platform-prod \
+  --account-name stcsomarchiveprod \
+  --query '[0].value' -o tsv)
+
+# Create lifecycle management policy JSON
+cat > lifecycle-policy.json << 'EOF'
+{
+  "rules": [
+    {
+      "name": "ArchiveToCoolAfter30Days",
+      "enabled": true,
+      "type": "Lifecycle",
+      "definition": {
+        "filters": {
+          "blobTypes": ["blockBlob"],
+          "prefixMatch": ["archive/"]
+        },
+        "actions": {
+          "baseBlob": {
+            "tierToCool": {
+              "daysAfterModificationGreaterThan": 30
+            },
+            "tierToArchive": {
+              "daysAfterModificationGreaterThan": 90
+            },
+            "delete": {
+              "daysAfterModificationGreaterThan": 2555
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "DeleteOldAuditLogs",
+      "enabled": true,
+      "type": "Lifecycle",
+      "definition": {
+        "filters": {
+          "blobTypes": ["blockBlob"],
+          "prefixMatch": ["audit-logs/"]
+        },
+        "actions": {
+          "baseBlob": {
+            "delete": {
+              "daysAfterModificationGreaterThan": 2555
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+EOF
+
+# Apply lifecycle management policy
+az storage account blob-service-properties update \
+  --account-name stcsomarchiveprod \
+  --resource-group rg-csom-platform-prod \
+  --set "deleteRetentionPolicy.enabled=true" \
+         "deleteRetentionPolicy.days=7" \
+         "containerDeleteRetentionPolicy.enabled=true" \
+         "containerDeleteRetentionPolicy.days=7"
+
+# Apply lifecycle management rules (requires Azure CLI extension)
+az storage account management-policy create \
+  --account-name stcsomarchiveprod \
+  --resource-group rg-csom-platform-prod \
+  --policy @lifecycle-policy.json
+```
+
+### Step 4.7.4: Store Connection String in Key Vault
+
+```bash
+# Get Blob Storage connection string
+BLOB_STORAGE_CONNECTION_STRING=$(az storage account show-connection-string \
+  --resource-group rg-csom-platform-prod \
+  --name stcsomarchiveprod \
+  --query connectionString -o tsv)
+
+# Store in Key Vault
+az keyvault secret set \
+  --vault-name kv-csom-platform-prod \
+  --name blob-storage-connection-string \
+  --value "$BLOB_STORAGE_CONNECTION_STRING"
+```
+
+### Step 4.7.5: Configure Access Control (Optional)
+
+```bash
+# Grant Function App Managed Identity access to Blob Storage
+FUNCTION_APP_PRINCIPAL_ID=$(az functionapp identity show \
+  --resource-group rg-csom-platform-prod \
+  --name func-csom-platform-prod \
+  --query principalId -o tsv)
+
+# Assign Storage Blob Data Contributor role
+az role assignment create \
+  --role "Storage Blob Data Contributor" \
+  --assignee $FUNCTION_APP_PRINCIPAL_ID \
+  --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/rg-csom-platform-prod/providers/Microsoft.Storage/storageAccounts/stcsomarchiveprod"
+```
+
+### Step 4.7.6: Verify Blob Storage Setup
+
+```bash
+# List containers
+az storage container list \
+  --account-name stcsomarchiveprod \
+  --account-key $STORAGE_ACCOUNT_KEY
+
+# Test upload (optional)
+echo "Test file" > test-archive.txt
+az storage blob upload \
+  --account-name stcsomarchiveprod \
+  --container-name archive \
+  --name test/test-archive.txt \
+  --file test-archive.txt \
+  --account-key $STORAGE_ACCOUNT_KEY
+
+# Verify upload
+az storage blob list \
+  --account-name stcsomarchiveprod \
+  --container-name archive \
+  --account-key $STORAGE_ACCOUNT_KEY
+
+# Clean up test file
+az storage blob delete \
+  --account-name stcsomarchiveprod \
+  --container-name archive \
+  --name test/test-archive.txt \
+  --account-key $STORAGE_ACCOUNT_KEY
+rm test-archive.txt
+```
+
+### Step 4.7.7: Update Database Schema for Archiving
+
+Add an `archived` column to the `audit_logs` table to track which logs have been archived:
+
+```sql
+-- Connect to PostgreSQL
+psql -h psql-csom-platform-prod.postgres.database.azure.com \
+     -U csomadmin \
+     -d auditdb
+
+-- Add archived flag and timestamp
+ALTER TABLE audit.audit_logs 
+ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP;
+
+-- Create index for archival queries
+CREATE INDEX IF NOT EXISTS idx_audit_logs_archived_created_at 
+ON audit.audit_logs(archived, created_at);
 ```
 
 ---
