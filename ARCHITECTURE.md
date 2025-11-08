@@ -1300,6 +1300,466 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
+### 6.4 Deployment Strategies
+
+This section outlines the deployment strategies used for safe, zero-downtime deployments of microservices and frontend applications.
+
+#### 6.4.1 Deployment Strategy Overview
+
+**Principles**:
+- Zero-downtime deployments
+- Gradual rollout with automatic rollback
+- Feature flags for controlled feature releases
+- Health checks and automated validation
+- Canary and blue-green deployments
+
+**Deployment Environments**:
+- **Development**: Immediate deployment, no approval required
+- **Staging**: Automatic deployment after successful tests
+- **Production**: Manual approval with gradual rollout
+
+---
+
+#### 6.4.2 Blue-Green Deployment
+
+**Description**: Deploy new version alongside existing version, then switch traffic.
+
+**Use Cases**:
+- Production deployments requiring zero downtime
+- Major version upgrades
+- Database schema migrations
+- High-risk deployments
+
+**Implementation**:
+
+1. **Kubernetes Blue-Green Deployment**
+   ```yaml
+   # Blue deployment (current version)
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: order-service-blue
+     labels:
+       version: blue
+   spec:
+     replicas: 3
+     selector:
+       matchLabels:
+         app: order-service
+         version: blue
+   
+   # Green deployment (new version)
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: order-service-green
+     labels:
+       version: green
+   spec:
+     replicas: 3
+     selector:
+       matchLabels:
+         app: order-service
+         version: green
+   ```
+
+2. **Traffic Switching**
+   - Use Kubernetes Service selector to switch between blue/green
+   - Switch all traffic at once or gradually
+   - Keep blue deployment running for quick rollback
+
+3. **Validation Steps**:
+   - Health checks on green deployment
+   - Smoke tests
+   - Monitor metrics for 15 minutes
+   - Validate business metrics
+
+4. **Rollback Procedure**:
+   - Switch Service selector back to blue
+   - Keep green deployment for analysis
+   - Investigate issues before cleanup
+
+**Advantages**:
+- ✅ Zero downtime
+- ✅ Instant rollback
+- ✅ Full validation before traffic switch
+- ✅ Isolated testing environment
+
+**Disadvantages**:
+- ❌ Requires double resources during deployment
+- ❌ Database migration complexity
+- ❌ More complex setup
+
+---
+
+#### 6.4.3 Canary Deployment
+
+**Description**: Gradually roll out new version to a small percentage of users, then increase.
+
+**Use Cases**:
+- Low-risk deployments
+- Performance validation
+- A/B testing
+- Gradual feature rollouts
+
+**Implementation**:
+
+1. **Kubernetes Canary Deployment with Istio**
+   ```yaml
+   # Canary traffic splitting
+   apiVersion: networking.istio.io/v1beta1
+   kind: VirtualService
+   metadata:
+     name: order-service
+   spec:
+     hosts:
+     - order-service
+     http:
+     - match:
+       - headers:
+           canary:
+             exact: "true"
+       route:
+       - destination:
+           host: order-service
+           subset: canary
+         weight: 100
+     - route:
+       - destination:
+           host: order-service
+           subset: stable
+         weight: 90
+       - destination:
+           host: order-service
+           subset: canary
+         weight: 10
+   ```
+
+2. **Canary Phases**:
+   - **Phase 1**: 5% traffic to canary (5 minutes)
+   - **Phase 2**: 25% traffic to canary (10 minutes)
+   - **Phase 3**: 50% traffic to canary (15 minutes)
+   - **Phase 4**: 100% traffic to canary (promote to stable)
+
+3. **Automated Promotion Criteria**:
+   - Error rate < 0.1%
+   - Response time within 10% of baseline
+   - No critical errors
+   - Business metrics within acceptable range
+
+4. **Automated Rollback Criteria**:
+   - Error rate > 1%
+   - Response time degradation > 50%
+   - Critical errors detected
+   - Business metrics degradation
+
+**Advantages**:
+- ✅ Minimal risk exposure
+- ✅ Real-user validation
+- ✅ Gradual rollout
+- ✅ Automatic rollback
+
+**Disadvantages**:
+- ❌ Requires service mesh (Istio)
+- ❌ More complex monitoring
+- ❌ Slower full rollout
+
+---
+
+#### 6.4.4 Rolling Deployment
+
+**Description**: Gradually replace old pods with new pods.
+
+**Use Cases**:
+- Standard deployments
+- Development and staging environments
+- Low-risk production deployments
+
+**Implementation**:
+
+1. **Kubernetes Rolling Update** (default strategy)
+   ```yaml
+   apiVersion: apps/v1
+   kind: Deployment
+   spec:
+     strategy:
+       type: RollingUpdate
+       rollingUpdate:
+         maxSurge: 1
+         maxUnavailable: 0
+     replicas: 3
+   ```
+
+2. **Rolling Update Parameters**:
+   - **maxSurge**: Maximum number of pods that can be created above desired replicas
+   - **maxUnavailable**: Maximum number of pods that can be unavailable during update
+   - **minReadySeconds**: Minimum seconds a pod must be ready before considered available
+
+3. **Health Checks**:
+   - Liveness probe: Restart unhealthy pods
+   - Readiness probe: Remove pods from service during updates
+   - Startup probe: Wait for slow-starting applications
+
+**Advantages**:
+- ✅ No downtime (if configured correctly)
+- ✅ Resource efficient
+- ✅ Simple implementation
+- ✅ Automatic rollback on failure
+
+**Disadvantages**-:
+- ❌ Mixed versions during rollout
+- ❌ Slower than blue-green
+- ❌ Potential compatibility issues
+
+---
+
+#### 6.4.5 Feature Flags
+
+**Description**: Control feature availability without code deployment.
+
+**Use Cases**:
+- Gradual feature rollouts
+- A/B testing
+- Emergency feature disable
+- Regional feature availability
+
+**Implementation**:
+
+1. **Feature Flag Service** (Azure App Configuration or custom service)
+   - Centralized feature flag management
+   - Real-time flag updates
+   - User segmentation
+   - Percentage-based rollouts
+
+2. **Integration with Services**:
+   ```java
+   @FeatureFlag(name = "new-payment-flow", enabled = true)
+   public PaymentResponse processPayment(PaymentRequest request) {
+       // New implementation
+   }
+   ```
+
+3. **Feature Flag Types**:
+   - **Boolean flags**: Simple on/off
+   - **Percentage flags**: Gradual rollout (10%, 25%, 50%, 100%)
+   - **User-based flags**: Specific user groups
+   - **Time-based flags**: Scheduled activation
+
+4. **Feature Flag Management**:
+   - Azure App Configuration for feature flags
+   - Real-time updates without deployment
+   - Audit trail of flag changes
+   - Emergency kill switch
+
+**Advantages**:
+- ✅ Instant feature control
+- ✅ A/B testing capability
+- ✅ Reduced deployment risk
+- ✅ Gradual rollouts
+
+**Disadvantages**:
+- ❌ Code complexity
+- ❌ Technical debt if flags not cleaned up
+- ❌ Requires feature flag infrastructure
+
+---
+
+#### 6.4.6 Database Migration Strategy
+
+**Description**: Safe database schema and data migrations during deployments.
+
+**Strategies**:
+
+1. **Backward-Compatible Migrations**
+   - Add new columns as nullable
+   - Add new tables without breaking changes
+   - Deploy application code that works with old and new schema
+   - Migrate data in background
+   - Remove old columns in separate deployment
+
+2. **Blue-Green Database Migration**
+   - Create new database version
+   - Run migrations on new database
+   - Deploy application with dual-write (write to both databases)
+   - Sync data from old to new database
+   - Switch reads to new database
+   - Switch writes to new database
+   - Decommission old database
+
+3. **Liquibase/Flyway for Version Control**
+   - Version-controlled database migrations
+   - Automated migration execution
+   - Rollback capability
+   - Migration testing in CI/CD
+
+---
+
+#### 6.4.7 Frontend Deployment Strategy
+
+**Description**: Deployment strategies for React microfrontends.
+
+**Strategies**:
+
+1. **Static Web Apps Deployment**
+   - **External Frontend**: Azure Static Web Apps with CDN
+   - Automatic deployment from Git
+   - Preview deployments for PRs
+   - Production deployments with approval
+
+2. **Microfrontend Deployment**
+   - Independent deployment of each microfrontend
+   - Version pinning in shell application
+   - Gradual rollout of microfrontend updates
+   - Feature flags for microfrontend features
+
+3. **Versioning Strategy**:
+   - Semantic versioning (major.minor.patch)
+   - Backward-compatible updates (minor/patch)
+   - Breaking changes (major version)
+   - Multiple versions running simultaneously
+
+---
+
+#### 6.4.8 Deployment Pipeline Integration
+
+**GitLab CI/CD Pipeline with Deployment Strategies**:
+
+1. **Development Environment**
+   - Strategy: Rolling deployment
+   - Approval: Automatic
+   - Rollback: Automatic on failure
+
+2. **Staging Environment**
+   - Strategy: Blue-green deployment
+   - Approval: Automatic after tests
+   - Validation: Automated smoke tests
+   - Rollback: Manual or automated on failure
+
+3. **Production Environment**
+   - Strategy: Canary deployment (default) or Blue-green (major releases)
+   - Approval: Manual approval required
+   - Phases:
+     - Phase 1: Deploy to 5% canary
+     - Phase 2: Monitor for 15 minutes
+     - Phase 3: Increase to 25% if healthy
+     - Phase 4: Increase to 50% if healthy
+     - Phase 5: Increase to 100% if healthy
+   - Rollback: Automatic on error threshold breach
+
+**Deployment Automation**:
+- Automated health checks
+- Automated smoke tests
+- Automated performance validation
+- Automated rollback on failure
+- Deployment notifications
+
+---
+
+#### 6.4.9 Monitoring and Validation
+
+**Pre-Deployment Validation**:
+- Unit tests
+- Integration tests
+- Security scans
+- Performance tests
+- Load tests
+
+**Post-Deployment Validation**:
+- Health checks
+- Smoke tests
+- Performance metrics
+- Error rate monitoring
+- Business metrics validation
+
+**Monitoring During Deployment**:
+- Real-time error rate
+- Response time metrics
+- Resource utilization
+- Database performance
+- Business metrics (orders, payments, etc.)
+
+**Automated Rollback Triggers**:
+- Error rate > 1% for 2 minutes
+- Response time degradation > 50%
+- Critical errors detected
+- Database connection failures
+- Business metrics degradation
+
+---
+
+#### 6.4.10 Deployment Best Practices
+
+1. **Always Use Health Checks**
+   - Liveness probes
+   - Readiness probes
+   - Startup probes for slow-starting apps
+
+2. **Implement Gradual Rollouts**
+   - Start with small percentage
+   - Monitor metrics
+   - Gradually increase traffic
+   - Automatic rollback on issues
+
+3. **Database Migrations**
+   - Backward-compatible migrations
+   - Test migrations in staging
+   - Run migrations before application deployment
+   - Have rollback plan
+
+4. **Feature Flags**
+   - Use for new features
+   - Enable gradual rollout
+   - Monitor feature usage
+   - Clean up old flags
+
+5. **Monitoring and Alerting**
+   - Monitor during deployment
+   - Set up alerts for critical metrics
+   - Have rollback procedures ready
+   - Document deployment runbooks
+
+6. **Testing**
+   - Test in staging environment
+   - Load test before production
+   - Validate database migrations
+   - Test rollback procedures
+
+---
+
+#### 6.4.11 Deployment Tools
+
+**Kubernetes Native**:
+- `kubectl rollout` commands
+- Deployment strategies (RollingUpdate, Recreate)
+- Health checks and probes
+
+**Service Mesh (Istio)**:
+- Traffic splitting for canary deployments
+- Circuit breakers
+- Request routing and load balancing
+
+**GitLab CI/CD**:
+- Automated deployment pipelines
+- Environment-specific configurations
+- Manual approval gates
+- Rollback automation
+
+**Azure DevOps** (Alternative):
+- Release pipelines
+- Deployment groups
+- Approval gates
+- Automated testing
+
+**ArgoCD** (GitOps):
+- Git-based deployments
+- Automated sync
+- Rollback capabilities
+- Multi-environment management
+
+---
+
+## 7. Scalability & Performance
+
 ## 7. Scalability & Performance
 
 ### 7.1 Horizontal Scaling
