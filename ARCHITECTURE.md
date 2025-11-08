@@ -23,8 +23,8 @@ This document outlines the technical architecture for a cloud-native, microservi
    - [Compliance](#28-compliance)
    - [Disaster Recovery](#29-disaster-recovery)
 3. [Architecture Diagram](#3-architecture-diagram)
-   - [Azure Services Architecture Diagram](#21-azure-services-architecture-diagram)
-3. [Component Architecture](#3-component-architecture)
+   - [Azure Services Architecture Diagram](#31-azure-services-architecture-diagram)
+4. [Component Architecture](#4-component-architecture)
    - [Frontend Layer](#31-frontend-layer)
    - [API Gateway Layer](#32-api-gateway-layer)
    - [Microservices Layer](#33-microservices-layer-spring-boot)
@@ -35,13 +35,13 @@ This document outlines the technical architecture for a cloud-native, microservi
    - [Messaging & Events](#36-messaging--events)
    - [Authentication & Authorization](#37-authentication--authorization)
    - [Observability](#38-observability)
-4. [Security Architecture](#4-security-architecture)
-5. [Deployment Architecture](#5-deployment-architecture)
-6. [Scalability & Performance](#6-scalability--performance)
-7. [Disaster Recovery & Backup](#7-disaster-recovery--backup)
-8. [Cost Optimization](#8-cost-optimization)
-9. [Technology Stack Summary](#9-technology-stack-summary)
-10. [Next Steps](#10-next-steps)
+5. [Security Architecture](#5-security-architecture)
+6. [Deployment Architecture](#6-deployment-architecture)
+7. [Scalability & Performance](#7-scalability--performance)
+8. [Disaster Recovery & Backup](#8-disaster-recovery--backup)
+9. [Cost Optimization](#9-cost-optimization)
+10. [Technology Stack Summary](#10-technology-stack-summary)
+11. [Next Steps](#11-next-steps)
 
 ---
 
@@ -661,7 +661,7 @@ This diagram illustrates all Azure services used in the platform and their relat
 
 **Important**: There are **two separate frontend applications** - one for external clients and one for internal employees. They are completely independent and do not call each other.
 
-#### 3.1.1 External Frontend Application (Client-Facing)
+#### 4.1.1 External Frontend Application (Client-Facing)
 **Technology**: React 18+, Module Federation (Webpack 5)
 **Deployment**: Azure Static Web Apps
 **Authentication**: Entra External ID
@@ -689,7 +689,7 @@ This diagram illustrates all Azure services used in the platform and their relat
 - Deployed to Azure Static Web Apps
 - Connects to Apigee External API Proxy
 
-#### 3.1.2 Internal Frontend Application (Employee-Facing)
+#### 4.1.2 Internal Frontend Application (Employee-Facing)
 **Technology**: React 18+, Module Federation (Webpack 5)
 **Deployment**: Azure App Service
 **Authentication**: Entra ID
@@ -730,7 +730,7 @@ For a detailed comparison, see [API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARI
 
 **Recommendation**: For this Azure-native architecture, **Azure API Management** is recommended due to native Azure integration, cost-effectiveness, and easier management. However, **Apigee** can be used if advanced analytics, monetization, or multi-cloud support is required.
 
-#### 3.2.1 Apigee API Management
+#### 4.2.1 Apigee API Management
 **Purpose**: API governance, security, rate limiting, analytics
 
 **Important**: All REST APIs are **exposed exclusively via the API Gateway** (Apigee or Azure API Management). The backend microservices are not directly accessible from the frontend applications. All API calls go through the API gateway proxies.
@@ -772,7 +772,7 @@ For a detailed comparison, see [API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARI
 - API versioning and deprecation policies
 - SDK generation from OpenAPI specs
 
-#### 3.2.2 Azure API Management (Alternative)
+#### 4.2.2 Azure API Management (Alternative)
 **Purpose**: API governance, security, rate limiting, analytics (Azure-native alternative)
 
 **Configuration**: See `azure-api-management/` directory for configuration files.
@@ -856,7 +856,7 @@ All services deployed on AKS with:
 
 ---
 
-#### 3.3.2 Product Service
+#### 4.3.2 Product Service
 **Responsibilities**:
 - Product catalog management
 - Inventory tracking
@@ -880,7 +880,7 @@ All services deployed on AKS with:
 
 ---
 
-#### 3.3.3 Customer Service
+#### 4.3.3 Customer Service
 **Responsibilities**:
 - Customer profile management
 - GDPR data management (right to access, deletion)
@@ -904,7 +904,7 @@ All services deployed on AKS with:
 
 ---
 
-#### 3.3.4 Notification Service
+#### 4.3.4 Notification Service
 **Responsibilities**:
 - Real-time notifications (WebSocket/SSE)
 - Email notifications via Azure Communication Services
@@ -929,7 +929,7 @@ All services deployed on AKS with:
 
 ---
 
-#### 3.3.5 Payment Service
+#### 4.3.5 Payment Service
 **Responsibilities**:
 - Payment processing
 - Payment gateway integration
@@ -952,7 +952,7 @@ All services deployed on AKS with:
 
 ---
 
-#### 3.3.6 Audit Service
+#### 4.3.6 Audit Service
 **Responsibilities**:
 - GDPR compliance logging
 - Security audit trails
@@ -976,7 +976,7 @@ All services deployed on AKS with:
 
 ### 4.4 Data Layer
 
-#### 3.4.1 PostgreSQL Database
+#### 4.4.1 PostgreSQL Database
 **Deployment**: Azure Database for PostgreSQL Flexible Server
 
 **Database Structure**:
@@ -993,7 +993,7 @@ All services deployed on AKS with:
 
 ---
 
-#### 3.4.2 Azure Redis Cache
+#### 4.4.2 Azure Redis Cache
 **Deployment**: Azure Cache for Redis (Standard tier)
 
 **Purpose**:
@@ -1037,7 +1037,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 **Recommendation**: For this Azure-native architecture, **Azure Key Vault** is recommended due to native Azure integration, managed service, and cost-effectiveness. However, **HashiCorp Vault** can be used if dynamic secrets, multi-cloud support, or encryption as a service is required.
 
-#### 3.5.1 Azure Key Vault
+#### 4.5.1 Azure Key Vault
 **Purpose**: Secure storage and management of secrets, keys, and certificates
 
 **Configuration**: See `infrastructure/bicep/main.bicep` for Key Vault resource definition.
@@ -1062,7 +1062,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 - Managed Identities for pod authentication
 - Automatic secret injection into pods
 
-#### 3.5.2 HashiCorp Vault (Alternative)
+#### 4.5.2 HashiCorp Vault (Alternative)
 **Purpose**: Advanced secrets management with dynamic secrets and encryption as a service
 
 **Configuration**: See `hashicorp-vault/` directory for deployment and configuration files.
@@ -1093,7 +1093,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ### 4.6 Serverless Functions Layer
 
-#### 3.6.1 Azure Functions (Housekeeping Jobs)
+#### 4.6.1 Azure Functions (Housekeeping Jobs)
 **Deployment**: Azure Functions (Consumption Plan)
 
 **Functions**:
@@ -1129,7 +1129,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ### 4.7 Integration Layer
 
-#### 3.6.1 Legacy SOAP Service Integration
+#### 4.7.1 Legacy SOAP Service Integration
 **Service**: Product Service → Legacy ERP System
 
 **Implementation**:
@@ -1144,7 +1144,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-#### 3.6.2 External REST Service Integration
+#### 4.7.2 External REST Service Integration
 **Services**:
 1. **Payment Gateway** (Payment Service)
    - RESTful API integration
@@ -1159,7 +1159,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ### 4.8 Messaging & Events
 
-#### 3.6.1 Azure Service Bus
+#### 4.8.1 Azure Service Bus
 **Purpose**: Asynchronous communication between services
 
 **Topics**:
@@ -1174,7 +1174,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-#### 3.6.2 Azure Event Grid
+#### 4.8.2 Azure Event Grid
 **Purpose**: Event-driven architecture for real-time processing
 
 **Event Types**:
@@ -1187,7 +1187,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ### 4.9 Authentication & Authorization
 
-#### 3.7.1 Entra ID (Azure AD) - Employees
+#### 4.9.1 Entra ID (Azure AD) - Employees
 **Configuration**:
 - App Registration for internal application
 - JWT token validation in Apigee and services
@@ -1203,7 +1203,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ---
 
-#### 3.7.2 Entra External ID - Clients
+#### 4.9.2 Entra External ID - Clients
 **Configuration**:
 - External ID tenant for B2C
 - User flows for registration/login
@@ -1221,17 +1221,17 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ### 4.10 Observability
 
-#### 3.8.1 Azure Monitor
+#### 4.10.1 Azure Monitor
 - Application Insights for all services
 - Custom metrics and dashboards
 - Alert rules for critical errors
 
-#### 3.8.2 Logging
+#### 4.10.2 Logging
 - Centralized logging via Azure Log Analytics
 - Structured logging (JSON format)
 - Log retention per GDPR requirements
 
-#### 3.8.3 Distributed Tracing
+#### 4.10.3 Distributed Tracing
 - Application Insights distributed tracing
 - Correlation IDs across services
 - Performance monitoring
@@ -1240,25 +1240,25 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ## 5. Security Architecture
 
-### 4.1 Network Security
+### 5.1 Network Security
 - AKS private cluster with private endpoints
 - Network policies for service-to-service communication
 - Azure Firewall for egress traffic control
 - VPN/ExpressRoute for on-premises connectivity (if needed)
 
-### 4.2 Application Security
+### 5.2 Application Security
 - JWT token validation at API Gateway (Apigee or Azure API Management) and service level
 - HTTPS/TLS 1.2+ everywhere
 - Secrets management via Azure Key Vault or HashiCorp Vault
 - OWASP Top 10 protection
 
-### 4.3 Data Security
+### 5.3 Data Security
 - Encryption at rest (Azure managed keys)
 - Encryption in transit (TLS)
 - Database access via private endpoints
 - PII data masking in logs
 
-### 4.4 GDPR Compliance
+### 5.4 GDPR Compliance
 - Right to access: Data export endpoints
 - Right to deletion: Soft delete with audit trail
 - Data minimization: Only collect necessary data
@@ -1270,7 +1270,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ## 6. Deployment Architecture
 
-### 5.1 Azure Resources
+### 6.1 Azure Resources
 - **AKS Cluster**: Kubernetes 1.28+, 3 node pools (system, user, compute)
 - **PostgreSQL**: Flexible Server, zone-redundant high availability
 - **Apigee**: Apigee X on Google Cloud (or Azure API Management as alternative)
@@ -1279,7 +1279,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 - **Container Registry**: Azure Container Registry (ACR)
 - **Static Web Apps**: For React frontend (or App Service)
 
-### 5.2 GitLab CI/CD
+### 6.2 GitLab CI/CD
 - **GitLab Runners**: Self-hosted or GitLab.com
 - **Pipeline Stages**:
   1. Build (compile, test, build Docker images)
@@ -1290,7 +1290,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
   6. E2E tests
   7. Deploy to Production (manual approval)
 
-### 5.3 Kubernetes Deployment
+### 6.3 Kubernetes Deployment
 - **Namespaces**: `dev`, `staging`, `production`
 - **Deployments**: Each microservice as separate deployment
 - **Services**: ClusterIP for internal, LoadBalancer for external
@@ -1302,16 +1302,16 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ## 7. Scalability & Performance
 
-### 6.1 Horizontal Scaling
+### 7.1 Horizontal Scaling
 - AKS cluster autoscaling
 - Pod autoscaling (HPA) based on CPU/memory
 - Database read replicas for read-heavy workloads
 
-### 6.2 Caching
+### 7.2 Caching
 - Redis Cache for frequently accessed data
 - CDN for static assets (Azure Front Door)
 
-### 6.3 Performance Targets
+### 7.3 Performance Targets
 - API response time: < 200ms (p95)
 - Frontend load time: < 2s
 - Database query time: < 100ms (p95)
@@ -1321,12 +1321,12 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ## 8. Disaster Recovery & Backup
 
-### 7.1 Backup Strategy
+### 8.1 Backup Strategy
 - PostgreSQL: Automated daily backups, 35-day retention
 - AKS: Configuration backup to Git
 - Key Vault: Automated backup
 
-### 7.2 Disaster Recovery
+### 8.2 Disaster Recovery
 - Multi-region deployment (primary + secondary)
 - Database geo-replication
 - Failover procedures documented
@@ -1335,12 +1335,12 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ## 9. Cost Optimization
 
-### 8.1 Resource Sizing
+### 9.1 Resource Sizing
 - Right-sized AKS node pools
 - Reserved instances for predictable workloads
 - Spot instances for non-critical workloads
 
-### 8.2 Monitoring
+### 9.2 Monitoring
 - Cost alerts and budgets
 - Resource utilization monitoring
 - Idle resource cleanup
