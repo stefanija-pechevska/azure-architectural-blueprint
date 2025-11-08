@@ -221,7 +221,7 @@ This diagram illustrates all Azure services used in the platform and their relat
 | **Azure Static Web Apps** | Static web hosting | External frontend application (client-facing) |
 | **Azure Database for PostgreSQL** | Relational database | Primary data storage for all services |
 | **Azure Redis Cache** | In-memory cache | Session storage, data caching, rate limiting |
-| **Azure Key Vault** | Secrets management | Stores passwords, connection strings, certificates |
+| **Azure Key Vault** | Secrets management | Stores passwords, connection strings, certificates (or HashiCorp Vault as alternative) |
 | **Azure Service Bus** | Message broker | Asynchronous communication between services |
 | **Azure Event Grid** | Event routing | Event-driven architecture for real-time processing |
 | **Azure Functions** | Serverless compute | Housekeeping jobs, scheduled tasks, event processing |
@@ -606,7 +606,71 @@ All services deployed on AKS with:
 
 ---
 
-### 3.5 Serverless Functions Layer
+### 3.5 Secrets Management Layer
+
+**Secrets Management Options**: This architecture supports two secrets management solutions:
+1. **Azure Key Vault** (Azure) - See `infrastructure/bicep/main.bicep` for Key Vault resource
+2. **HashiCorp Vault** (Self-hosted/HCP) - See `hashicorp-vault/` directory
+
+For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANAGEMENT_COMPARISON.md).
+
+**Recommendation**: For this Azure-native architecture, **Azure Key Vault** is recommended due to native Azure integration, managed service, and cost-effectiveness. However, **HashiCorp Vault** can be used if dynamic secrets, multi-cloud support, or encryption as a service is required.
+
+#### 3.5.1 Azure Key Vault
+**Purpose**: Secure storage and management of secrets, keys, and certificates
+
+**Configuration**: See `infrastructure/bicep/main.bicep` for Key Vault resource definition.
+
+**Key Features**:
+- Fully managed Azure service
+- Native integration with Managed Identities
+- HSM-backed keys (Premium tier)
+- Certificate lifecycle management
+- Soft delete and recovery protection
+- Integration with Azure Monitor and Log Analytics
+
+**Usage**:
+- Store database connection strings
+- Store API keys and passwords
+- Store Service Bus connection strings
+- Store JWT secrets
+- Store certificates
+
+**Integration with AKS**:
+- Secrets Store CSI driver for Kubernetes
+- Managed Identities for pod authentication
+- Automatic secret injection into pods
+
+#### 3.5.2 HashiCorp Vault (Alternative)
+**Purpose**: Advanced secrets management with dynamic secrets and encryption as a service
+
+**Configuration**: See `hashicorp-vault/` directory for deployment and configuration files.
+
+**Key Features**:
+- Dynamic secrets generation
+- Multiple secrets engines (KV, Azure, Database, etc.)
+- Encryption as a service (Transit engine)
+- Flexible authentication methods (Kubernetes, AppRole, OIDC, etc.)
+- Advanced policy engine (HCL)
+- Multi-cloud support
+
+**Deployment Options**:
+1. **On AKS**: Deploy Vault as StatefulSet in Kubernetes
+2. **On Azure VMs**: Self-hosted Vault deployment
+3. **HashiCorp Cloud Platform**: Managed Vault service
+
+**Advantages over Azure Key Vault**:
+- Dynamic secrets generation
+- Encryption as a service (Transit)
+- More flexible authentication
+- Multi-cloud support
+- Advanced policy engine
+
+**See**: [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANAGEMENT_COMPARISON.md) for detailed comparison.
+
+---
+
+### 3.6 Serverless Functions Layer
 
 #### 3.5.1 Azure Functions (Housekeeping Jobs)
 **Deployment**: Azure Functions (Consumption Plan)
@@ -764,7 +828,7 @@ All services deployed on AKS with:
 ### 4.2 Application Security
 - JWT token validation at API Gateway (Apigee or Azure API Management) and service level
 - HTTPS/TLS 1.2+ everywhere
-- Secrets management via Azure Key Vault
+- Secrets management via Azure Key Vault or HashiCorp Vault
 - OWASP Top 10 protection
 
 ### 4.3 Data Security
@@ -790,7 +854,7 @@ All services deployed on AKS with:
 - **PostgreSQL**: Flexible Server, zone-redundant high availability
 - **Apigee**: Apigee X on Google Cloud (or Azure API Management as alternative)
 - **Service Bus**: Premium tier for production
-- **Key Vault**: For secrets management
+- **Key Vault**: For secrets management (Azure Key Vault or HashiCorp Vault)
 - **Container Registry**: Azure Container Registry (ACR)
 - **Static Web Apps**: For React frontend (or App Service)
 
@@ -811,7 +875,7 @@ All services deployed on AKS with:
 - **Services**: ClusterIP for internal, LoadBalancer for external
 - **Ingress**: NGINX Ingress Controller with TLS
 - **ConfigMaps**: Application configuration
-- **Secrets**: Retrieved from Azure Key Vault via CSI driver
+- **Secrets**: Retrieved from Azure Key Vault (via CSI driver) or HashiCorp Vault (via Vault Agent)
 
 ---
 
@@ -876,7 +940,7 @@ All services deployed on AKS with:
 | Authentication | Entra ID, Entra External ID |
 | CI/CD | GitLab CI/CD |
 | Monitoring | Azure Monitor, Application Insights |
-| Secrets | Azure Key Vault |
+| Secrets | Azure Key Vault (or HashiCorp Vault) |
 | Infrastructure as Code | Bicep/ARM Templates |
 
 ---

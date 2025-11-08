@@ -239,7 +239,11 @@ azure-architectural-blueprint/
 ├── azure-api-management/      # Azure API Management configs
 │   ├── apis/                  # API definitions (OpenAPI)
 │   └── policies/              # API Management policies
+├── hashicorp-vault/           # HashiCorp Vault configs
+│   ├── kubernetes/            # Vault deployment on AKS
+│   └── policies/              # Vault access policies
 ├── API_GATEWAY_COMPARISON.md  # Apigee vs Azure API Management comparison
+├── SECRETS_MANAGEMENT_COMPARISON.md  # HashiCorp Vault vs Azure Key Vault comparison
 ├── ARCHITECTURE.md            # Architecture documentation
 ├── IMPLEMENTATION_GUIDE.md    # Implementation guide
 ├── GDPR_COMPLIANCE.md         # GDPR compliance guide
