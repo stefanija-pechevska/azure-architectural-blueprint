@@ -39,7 +39,7 @@ This document outlines the technical architecture for a cloud-native, microservi
 └──────────────────────────────┬──────────────────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────────────────┐
-│                    REACT WEB APPLICATION (Microfrontends)                │
+│              EXTERNAL REACT WEB APPLICATION (Microfrontends)            │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
 │  │   Orders    │  │   Products   │  │   Account    │  │ Notifications│ │
 │  │ Microfrontend│  │ Microfrontend│  │ Microfrontend│  │ Microfrontend│ │
@@ -47,25 +47,40 @@ This document outlines the technical architecture for a cloud-native, microservi
 └──────────────────────────────┬──────────────────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────────────────┐
-│                         INTERNAL USERS (Employees)                        │
-│                      Entra ID Authentication                               │
+│                    APIGEE API GATEWAY (External Proxy)                  │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  • Entra External ID JWT Validation                             │   │
+│  │  • Rate Limiting  • CORS  • Request/Response Transform          │   │
+│  │  • API Versioning  • Analytics  • Security Policies              │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+                               │
+┌──────────────────────────────┼──────────────────────────────────────────┐
+│                         INTERNAL USERS (Employees)                       │
+│                      Entra ID Authentication                             │
 └──────────────────────────────┬──────────────────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────────────────┐
-│                          APIGEE API GATEWAY                               │
+│              INTERNAL REACT WEB APPLICATION (Microfrontends)             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   Admin    │  │   Orders     │  │   Customers   │  │  Analytics   │ │
+│  │ Dashboard  │  │ Management   │  │  Management   │  │  & Reports   │ │
+│  │ Microfrontend│  │ Microfrontend│  │ Microfrontend│  │ Microfrontend│ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────────┐
+│                    APIGEE API GATEWAY (Internal Proxy)                  │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │  • Rate Limiting  • Authentication  • Request/Response Transform │   │
+│  │  • Entra ID JWT Validation                                       │   │
+│  │  • Rate Limiting  • IP Whitelisting  • Request/Response Transform│   │
 │  │  • API Versioning  • Analytics  • Security Policies              │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────┬──────────────────────────────────────────┘
                                │
         ┌──────────────────────┼──────────────────────┐
         │                      │                      │
-┌───────▼────────┐   ┌─────────▼─────────┐   ┌───────▼────────┐
-│  API Gateway   │   │  API Gateway      │   │  API Gateway   │
-│  Service       │   │  Service          │   │  Service       │
-│  (Internal)    │   │  (External)       │   │  (Notifications)│
-└───────┬────────┘   └─────────┬─────────┘   └───────┬────────┘
         │                      │                      │
 ┌───────▼──────────────────────┼──────────────────────▼────────┐
 │                    AZURE KUBERNETES SERVICE (AKS)             │
@@ -115,17 +130,26 @@ This diagram illustrates all Azure services used in the platform and their relat
         ┌───────────────────────────┼───────────────────────────┐
         │                           │                           │
 ┌───────▼────────┐        ┌─────────▼─────────┐      ┌─────────▼─────────┐
-│  Azure App     │        │  Azure Static      │      │  Entra ID /        │
-│  Service       │        │  Web Apps          │      │  External ID       │
-│                │        │                    │      │                    │
-│  (Frontend     │        │  (Frontend         │      │  (Authentication)  │
-│   Host)        │        │   Alternative)     │      │                    │
-└───────┬────────┘        └────────────────────┘      └─────────┬─────────┘
-        │                                                    │
-        │                                                    │
-┌───────▼───────────────────────────────────────────────────────▼────────────┐
+│  Azure Static │        │  Azure App         │      │  Entra ID /        │
+│  Web Apps     │        │  Service           │      │  External ID       │
+│  (External    │        │  (Internal         │      │                    │
+│   Frontend)   │        │   Frontend)         │      │  (Authentication)  │
+└───────┬────────┘        └─────────┬─────────┘      └─────────┬─────────┘
+        │                            │                           │
+        │                            │                           │
+┌───────▼────────┐        ┌─────────▼─────────┐                 │
+│  External API  │        │  Internal API     │                 │
+│  Proxy         │        │  Proxy            │                 │
+│  (Apigee)      │        │  (Apigee)         │                 │
+└───────┬────────┘        └─────────┬─────────┘                 │
+        │                            │                           │
+        └────────────────────────────┼───────────────────────────┘
+                                     │
+┌─────────────────────────────────────▼─────────────────────────────────────┐
 │                    APIGEE API MANAGEMENT                                    │
 │                    (or Azure API Management)                                 │
+│  • External API Proxy (Entra External ID)                                   │
+│  • Internal API Proxy (Entra ID)                                           │
 └───────────────────────────────────────┬─────────────────────────────────────┘
                                         │
 ┌───────────────────────────────────────▼─────────────────────────────────────┐
@@ -209,8 +233,8 @@ This diagram illustrates all Azure services used in the platform and their relat
 | Azure Service | Purpose | Usage |
 |--------------|---------|-------|
 | **Azure Kubernetes Service (AKS)** | Container orchestration | Hosts all Spring Boot microservices |
-| **Azure App Service** | Web hosting | Alternative frontend hosting option |
-| **Azure Static Web Apps** | Static web hosting | Frontend React application hosting |
+| **Azure App Service** | Web hosting | Internal frontend application (employee-facing) |
+| **Azure Static Web Apps** | Static web hosting | External frontend application (client-facing) |
 | **Azure Database for PostgreSQL** | Relational database | Primary data storage for all services |
 | **Azure Redis Cache** | In-memory cache | Session storage, data caching, rate limiting |
 | **Azure Key Vault** | Secrets management | Stores passwords, connection strings, certificates |
@@ -230,34 +254,64 @@ This diagram illustrates all Azure services used in the platform and their relat
 
 ### 3.1 Frontend Layer
 
-#### 3.1.1 React Microfrontends
+**Important**: There are **two separate frontend applications** - one for external clients and one for internal employees. They are completely independent and do not call each other.
+
+#### 3.1.1 External Frontend Application (Client-Facing)
 **Technology**: React 18+, Module Federation (Webpack 5)
+**Deployment**: Azure Static Web Apps
+**Authentication**: Entra External ID
 
 **Microfrontends**:
 1. **Orders Microfrontend**
    - Order placement, tracking, history
-   - External client-facing
+   - Client order management
 
 2. **Products Microfrontend**
    - Product catalog, search, details
-   - Shared between internal/external
+   - Product browsing and details
 
 3. **Account Microfrontend**
-   - User profile, settings, GDPR data management
-   - Separate views for employees vs clients
+   - User profile, settings
+   - GDPR data management (export, deletion requests)
 
 4. **Notifications Microfrontend**
    - Real-time notifications via WebSocket/SSE
-   - Different notification types for internal/external
-
-5. **Admin Dashboard Microfrontend** (Internal only)
-   - Order management, customer service tools
-   - Analytics and reporting
+   - Client-facing notifications
 
 **Host Application**:
 - Shell application that orchestrates microfrontends
-- Handles routing, authentication context, shared state
-- Deployed to Azure Static Web Apps or Azure App Service
+- Handles routing, authentication context (Entra External ID), shared state
+- Deployed to Azure Static Web Apps
+- Connects to Apigee External API Proxy
+
+#### 3.1.2 Internal Frontend Application (Employee-Facing)
+**Technology**: React 18+, Module Federation (Webpack 5)
+**Deployment**: Azure App Service
+**Authentication**: Entra ID
+
+**Microfrontends**:
+1. **Admin Dashboard Microfrontend**
+   - System overview, metrics, dashboards
+   - Administrative tools
+
+2. **Orders Management Microfrontend**
+   - Order management and processing
+   - Order status updates, fulfillment
+
+3. **Customers Management Microfrontend**
+   - Customer service tools
+   - Customer data management
+   - GDPR compliance tools
+
+4. **Analytics & Reports Microfrontend**
+   - Business analytics
+   - Reporting and insights
+
+**Host Application**:
+- Shell application that orchestrates microfrontends
+- Handles routing, authentication context (Entra ID), shared state
+- Deployed to Azure App Service
+- Connects to Apigee Internal API Proxy
 
 ---
 
@@ -266,29 +320,31 @@ This diagram illustrates all Azure services used in the platform and their relat
 #### 3.2.1 Apigee API Management
 **Purpose**: API governance, security, rate limiting, analytics
 
-**API Proxies**:
-1. **External API Proxy**
+**API Proxies** (Two Separate Proxies):
+
+1. **External API Proxy** (for External Frontend Application)
    - Routes to client-facing services
-   - Entra External ID validation
+   - Entra External ID JWT validation
    - Rate limiting: 1000 req/min per client
-   - CORS policies
+   - CORS policies for external domain
+   - Routes: `/api/v1/orders`, `/api/v1/products`, `/api/v1/customers/{id}`, `/api/v1/notifications`
 
-2. **Internal API Proxy**
+2. **Internal API Proxy** (for Internal Frontend Application)
    - Routes to employee-facing services
-   - Entra ID validation
-   - Higher rate limits for internal users
+   - Entra ID JWT validation
+   - Higher rate limits for internal users (5000 req/min)
    - IP whitelisting for admin endpoints
+   - Routes: `/api/v1/admin/*`, `/api/v1/orders/*`, `/api/v1/customers/*`, `/api/v1/analytics/*`
 
-3. **Notification API Proxy**
-   - WebSocket/SSE endpoints
-   - Real-time message routing
+**Note**: Both proxies can route to the same backend microservices, but with different authentication, rate limits, and access controls. The Notification Service endpoints are available through both proxies with appropriate authentication.
 
 **Policies**:
-- JWT validation (Entra ID/External ID)
+- JWT validation (Entra ID for internal, Entra External ID for external)
 - Request/response transformation
 - Error handling and retry logic
 - API versioning (v1, v2)
 - Request/response logging (GDPR compliant)
+- Separate rate limiting policies per proxy
 
 ---
 
