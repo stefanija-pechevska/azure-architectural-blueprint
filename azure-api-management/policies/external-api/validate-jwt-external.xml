@@ -1,0 +1,43 @@
+<policies>
+    <inbound>
+        <base />
+        <!-- Validate JWT token from Entra External ID -->
+        <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized. Access token is missing or invalid.">
+            <openid-config url="https://{entra-external-tenant-name}.ciam.login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration" />
+            <required-claims>
+                <claim name="aud" match="any">
+                    <value>{entra-external-client-id}</value>
+                </claim>
+            </required-claims>
+        </validate-jwt>
+        <!-- CORS policy -->
+        <cors allow-credentials="true">
+            <allowed-origins>
+                <origin>https://external-app.azurestaticapps.net</origin>
+            </allowed-origins>
+            <allowed-methods>
+                <method>GET</method>
+                <method>POST</method>
+                <method>PUT</method>
+                <method>DELETE</method>
+                <method>OPTIONS</method>
+            </allowed-methods>
+            <allowed-headers>
+                <header>Authorization</header>
+                <header>Content-Type</header>
+            </allowed-headers>
+        </cors>
+        <!-- Rate limiting -->
+        <rate-limit-by-key calls="1000" renewal-period="60" counter-key="@(context.Request.IpAddress)" />
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
+

@@ -301,12 +301,20 @@ This diagram illustrates all Azure services used in the platform and their relat
 
 ### 3.2 API Gateway Layer
 
+**API Gateway Options**: This architecture supports two API gateway solutions:
+1. **Apigee API Management** (Google Cloud) - See `apigee/` directory
+2. **Azure API Management** (Azure) - See `azure-api-management/` directory
+
+For a detailed comparison, see [API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARISON.md).
+
+**Recommendation**: For this Azure-native architecture, **Azure API Management** is recommended due to native Azure integration, cost-effectiveness, and easier management. However, **Apigee** can be used if advanced analytics, monetization, or multi-cloud support is required.
+
 #### 3.2.1 Apigee API Management
 **Purpose**: API governance, security, rate limiting, analytics
 
-**Important**: All REST APIs are **exposed exclusively via Apigee**. The backend microservices are not directly accessible from the frontend applications. All API calls go through Apigee API proxies.
+**Important**: All REST APIs are **exposed exclusively via the API Gateway** (Apigee or Azure API Management). The backend microservices are not directly accessible from the frontend applications. All API calls go through the API gateway proxies.
 
-**API Specification**: All REST APIs use **OpenAPI 3.0 specification** (Swagger). OpenAPI specs are generated from Spring Boot services using SpringDoc OpenAPI and published to Apigee Developer Portal.
+**API Specification**: All REST APIs use **OpenAPI 3.0 specification** (Swagger). OpenAPI specs are generated from Spring Boot services using SpringDoc OpenAPI and published to the API gateway Developer Portal.
 
 **API Proxies** (Two Separate Proxies):
 
@@ -338,10 +346,47 @@ This diagram illustrates all Azure services used in the platform and their relat
 - OpenAPI spec validation and enforcement
 
 **API Documentation**:
-- OpenAPI specifications published to Apigee Developer Portal
+- OpenAPI specifications published to API Gateway Developer Portal
 - Interactive API documentation (Swagger UI) available for both proxies
 - API versioning and deprecation policies
 - SDK generation from OpenAPI specs
+
+#### 3.2.2 Azure API Management (Alternative)
+**Purpose**: API governance, security, rate limiting, analytics (Azure-native alternative)
+
+**Configuration**: See `azure-api-management/` directory for configuration files.
+
+**Key Features**:
+- Native Azure integration with Entra ID, Key Vault, Application Insights
+- OpenAPI import and management
+- XML-based policy framework
+- Built-in developer portal
+- Multiple pricing tiers (Developer, Basic, Standard, Premium, Consumption)
+
+**API Proxies** (Two Separate APIs):
+
+1. **External API** (for External Frontend Application)
+   - Base path: `/external-api/v1`
+   - Entra External ID JWT validation
+   - Rate limiting: 1000 req/min per client
+   - CORS policies for external domain
+   - OpenAPI spec: Imported from Spring Boot services
+
+2. **Internal API** (for Internal Frontend Application)
+   - Base path: `/internal-api/v1`
+   - Entra ID JWT validation
+   - Higher rate limits for internal users (5000 req/min)
+   - IP whitelisting for admin endpoints
+   - OpenAPI spec: Imported from Spring Boot services
+
+**Advantages over Apigee**:
+- Native Azure integration
+- Cost-effective for Azure-based architectures
+- Easier setup and management
+- Integrated Azure monitoring and security
+- Familiar Azure portal and tooling
+
+**See**: [API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARISON.md) for detailed comparison.
 
 ---
 
@@ -356,13 +401,14 @@ All services deployed on AKS with:
 - **SpringDoc OpenAPI** for OpenAPI 3.0 specification generation
 - **OpenAPI annotations** for API documentation
 
-**API Exposure**: All REST endpoints are **exposed via Apigee only**. Services are not directly accessible from outside the AKS cluster. Apigee proxies forward requests to the backend services.
+**API Exposure**: All REST endpoints are **exposed via API Gateway only** (Apigee or Azure API Management). Services are not directly accessible from outside the AKS cluster. The API gateway proxies forward requests to the backend services.
 
 **OpenAPI Specification**:
 - Each service generates OpenAPI 3.0 spec using SpringDoc OpenAPI
-- OpenAPI specs are published to Apigee Developer Portal
+- OpenAPI specs are published to the API Gateway Developer Portal
 - Specs include request/response schemas, authentication requirements, and examples
 - API documentation is auto-generated from OpenAPI specs
+- OpenAPI specs can be imported into either Apigee or Azure API Management
 
 #### 3.3.1 Order Service
 **Responsibilities**:
@@ -716,7 +762,7 @@ All services deployed on AKS with:
 - VPN/ExpressRoute for on-premises connectivity (if needed)
 
 ### 4.2 Application Security
-- JWT token validation at Apigee and service level
+- JWT token validation at API Gateway (Apigee or Azure API Management) and service level
 - HTTPS/TLS 1.2+ everywhere
 - Secrets management via Azure Key Vault
 - OWASP Top 10 protection

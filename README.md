@@ -14,7 +14,7 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - **PostgreSQL database** for persistent storage
 - **Entra ID JWT authentication** for employees
 - **Entra External ID** for client authentication
-- **Apigee API Management** for API governance
+- **Apigee API Management** or **Azure API Management** for API governance
 - **Integration with legacy SOAP services** (ERP system)
 - **Integration with external REST services** (payment gateway, shipping)
 - **GDPR compliance** with data export, deletion, and audit capabilities
@@ -236,6 +236,10 @@ azure-architectural-blueprint/
 │   └── database/              # Database migrations
 ├── apigee/
 │   └── proxies/               # Apigee API proxy configs
+├── azure-api-management/      # Azure API Management configs
+│   ├── apis/                  # API definitions (OpenAPI)
+│   └── policies/              # API Management policies
+├── API_GATEWAY_COMPARISON.md  # Apigee vs Azure API Management comparison
 ├── ARCHITECTURE.md            # Architecture documentation
 ├── IMPLEMENTATION_GUIDE.md    # Implementation guide
 ├── GDPR_COMPLIANCE.md         # GDPR compliance guide
