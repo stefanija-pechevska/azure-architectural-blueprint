@@ -91,6 +91,7 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - **[API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARISON.md)** - Apigee vs Azure API Management comparison
 - **[SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANAGEMENT_COMPARISON.md)** - HashiCorp Vault vs Azure Key Vault comparison
 - **[HELM_GUIDE.md](./HELM_GUIDE.md)** - Helm charts guide for Kubernetes deployments
+- **[INFRASTRUCTURE_DEPLOYMENT_GUIDE.md](./INFRASTRUCTURE_DEPLOYMENT_GUIDE.md)** - Infrastructure deployment guide with CI/CD examples and best practices
 
 ---
 

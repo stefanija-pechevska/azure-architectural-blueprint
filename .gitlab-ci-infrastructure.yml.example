@@ -1,0 +1,413 @@
+# GitLab CI/CD Pipeline for Infrastructure Deployment
+# 
+# This is an example pipeline specifically for infrastructure deployment.
+# Rename this file to .gitlab-ci-infrastructure.yml to use it as a separate pipeline,
+# or copy the jobs into your main .gitlab-ci.yml file.
+#
+# Pipeline Stages:
+# 1. Validate Infrastructure - Validate Terraform/Bicep/ARM templates
+# 2. Plan Infrastructure - Generate deployment plan (Terraform)
+# 3. Deploy Infrastructure Dev - Deploy to dev environment
+# 4. Deploy Infrastructure Staging - Deploy to staging environment
+# 5. Deploy Infrastructure Production - Deploy to production (manual approval)
+
+stages:
+  - validate-infrastructure
+  - plan-infrastructure
+  - deploy-infrastructure-dev
+  - deploy-infrastructure-staging
+  - deploy-infrastructure-production
+
+variables:
+  # Azure Configuration
+  AZURE_SUBSCRIPTION_ID: ""
+  AZURE_CLIENT_ID: ""
+  AZURE_CLIENT_SECRET: ""
+  AZURE_TENANT_ID: ""
+  
+  # Resource Groups
+  RESOURCE_GROUP_DEV: "rg-csom-platform-dev"
+  RESOURCE_GROUP_STAGING: "rg-csom-platform-staging"
+  RESOURCE_GROUP_PROD: "rg-csom-platform-prod"
+  
+  # Terraform State Configuration
+  TF_STATE_STORAGE_ACCOUNT: ""
+  TF_STATE_CONTAINER: "terraform-state"
+  TF_STATE_RESOURCE_GROUP: "rg-terraform-state"
+  
+  # Infrastructure Tool (terraform, bicep, or arm)
+  INFRASTRUCTURE_TOOL: "bicep"
+
+# ==============================================================================
+# Terraform Infrastructure Deployment
+# ==============================================================================
+
+# Validate Terraform
+validate-terraform:
+  stage: validate-infrastructure
+  image: hashicorp/terraform:latest
+  before_script:
+    - cd infrastructure/terraform
+  script:
+    - terraform init -backend=false
+    - terraform validate
+    - terraform fmt -check
+  only:
+    - merge_requests
+    - main
+    - develop
+  allow_failure: false
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "terraform"'
+
+# Plan Terraform (Development)
+plan-terraform-dev:
+  stage: plan-infrastructure
+  image: hashicorp/terraform:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - cd infrastructure/terraform
+    - |
+      terraform init \
+        -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT" \
+        -backend-config="container_name=$TF_STATE_CONTAINER" \
+        -backend-config="key=dev/terraform.tfstate" \
+        -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP"
+  script:
+    - terraform workspace select dev || terraform workspace new dev
+    - terraform plan -out=tfplan-dev -var-file=terraform.tfvars.dev
+  artifacts:
+    paths:
+      - infrastructure/terraform/tfplan-dev
+    expire_in: 1 week
+  only:
+    - develop
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "terraform"'
+
+# Deploy Terraform (Development)
+deploy-terraform-dev:
+  stage: deploy-infrastructure-dev
+  image: hashicorp/terraform:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - cd infrastructure/terraform
+    - |
+      terraform init \
+        -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT" \
+        -backend-config="container_name=$TF_STATE_CONTAINER" \
+        -backend-config="key=dev/terraform.tfstate" \
+        -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP"
+  script:
+    - terraform workspace select dev
+    - terraform apply -auto-approve tfplan-dev
+  dependencies:
+    - plan-terraform-dev
+  environment:
+    name: dev
+  only:
+    - develop
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "terraform"'
+
+# Plan Terraform (Staging)
+plan-terraform-staging:
+  stage: plan-infrastructure
+  image: hashicorp/terraform:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - cd infrastructure/terraform
+    - |
+      terraform init \
+        -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT" \
+        -backend-config="container_name=$TF_STATE_CONTAINER" \
+        -backend-config="key=staging/terraform.tfstate" \
+        -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP"
+  script:
+    - terraform workspace select staging || terraform workspace new staging
+    - terraform plan -out=tfplan-staging -var-file=terraform.tfvars.staging
+  artifacts:
+    paths:
+      - infrastructure/terraform/tfplan-staging
+    expire_in: 1 week
+  only:
+    - main
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "terraform"'
+
+# Deploy Terraform (Staging)
+deploy-terraform-staging:
+  stage: deploy-infrastructure-staging
+  image: hashicorp/terraform:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - cd infrastructure/terraform
+    - |
+      terraform init \
+        -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT" \
+        -backend-config="container_name=$TF_STATE_CONTAINER" \
+        -backend-config="key=staging/terraform.tfstate" \
+        -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP"
+  script:
+    - terraform workspace select staging
+    - terraform apply -auto-approve tfplan-staging
+  dependencies:
+    - plan-terraform-staging
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "terraform"'
+
+# Plan Terraform (Production)
+plan-terraform-production:
+  stage: plan-infrastructure
+  image: hashicorp/terraform:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - cd infrastructure/terraform
+    - |
+      terraform init \
+        -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT" \
+        -backend-config="container_name=$TF_STATE_CONTAINER" \
+        -backend-config="key=production/terraform.tfstate" \
+        -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP"
+  script:
+    - terraform workspace select production || terraform workspace new production
+    - terraform plan -out=tfplan-production -var-file=terraform.tfvars.production
+  artifacts:
+    paths:
+      - infrastructure/terraform/tfplan-production
+    expire_in: 1 month
+  only:
+    - main
+    - tags
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "terraform"'
+
+# Deploy Terraform (Production) - Manual Approval Required
+deploy-terraform-production:
+  stage: deploy-infrastructure-production
+  image: hashicorp/terraform:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - cd infrastructure/terraform
+    - |
+      terraform init \
+        -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT" \
+        -backend-config="container_name=$TF_STATE_CONTAINER" \
+        -backend-config="key=production/terraform.tfstate" \
+        -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP"
+  script:
+    - terraform workspace select production
+    - terraform apply -auto-approve tfplan-production
+  dependencies:
+    - plan-terraform-production
+  environment:
+    name: production
+  only:
+    - main
+    - tags
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "terraform"'
+
+# ==============================================================================
+# Bicep Infrastructure Deployment
+# ==============================================================================
+
+# Validate Bicep
+validate-bicep:
+  stage: validate-infrastructure
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+  script:
+    - cd infrastructure/bicep
+    - az bicep build --file main.bicep
+    - az deployment group validate \
+        --resource-group $RESOURCE_GROUP_DEV \
+        --template-file main.bicep \
+        --parameters @main.parameters.dev.json
+  only:
+    - merge_requests
+    - main
+    - develop
+  allow_failure: false
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "bicep"'
+
+# Deploy Bicep (Development)
+deploy-bicep-dev:
+  stage: deploy-infrastructure-dev
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az group create --name $RESOURCE_GROUP_DEV --location westeurope || true
+  script:
+    - cd infrastructure/bicep
+    - |
+      az deployment group create \
+        --resource-group $RESOURCE_GROUP_DEV \
+        --template-file main.bicep \
+        --parameters @main.parameters.dev.json \
+        --name csom-platform-dev-${CI_COMMIT_SHORT_SHA} \
+        --mode Incremental
+  environment:
+    name: dev
+  only:
+    - develop
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "bicep"'
+
+# Deploy Bicep (Staging)
+deploy-bicep-staging:
+  stage: deploy-infrastructure-staging
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az group create --name $RESOURCE_GROUP_STAGING --location westeurope || true
+  script:
+    - cd infrastructure/bicep
+    - |
+      az deployment group create \
+        --resource-group $RESOURCE_GROUP_STAGING \
+        --template-file main.bicep \
+        --parameters @main.parameters.staging.json \
+        --name csom-platform-staging-${CI_COMMIT_SHORT_SHA} \
+        --mode Incremental
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "bicep"'
+
+# Deploy Bicep (Production) - Manual Approval Required
+deploy-bicep-production:
+  stage: deploy-infrastructure-production
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az group create --name $RESOURCE_GROUP_PROD --location westeurope || true
+  script:
+    - cd infrastructure/bicep
+    - |
+      az deployment group create \
+        --resource-group $RESOURCE_GROUP_PROD \
+        --template-file main.bicep \
+        --parameters @main.parameters.prod.json \
+        --name csom-platform-prod-${CI_COMMIT_TAG:-${CI_COMMIT_SHORT_SHA}} \
+        --mode Incremental
+  environment:
+    name: production
+  only:
+    - main
+    - tags
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "bicep"'
+
+# ==============================================================================
+# ARM Template Infrastructure Deployment
+# ==============================================================================
+
+# Validate ARM Template
+validate-arm:
+  stage: validate-infrastructure
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+  script:
+    - cd infrastructure/arm
+    - |
+      az deployment group validate \
+        --resource-group $RESOURCE_GROUP_DEV \
+        --template-file azuredeploy.json \
+        --parameters @azuredeploy.parameters.dev.json
+  only:
+    - merge_requests
+    - main
+    - develop
+  allow_failure: false
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "arm"'
+
+# Deploy ARM Template (Development)
+deploy-arm-dev:
+  stage: deploy-infrastructure-dev
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az group create --name $RESOURCE_GROUP_DEV --location westeurope || true
+  script:
+    - cd infrastructure/arm
+    - |
+      az deployment group create \
+        --resource-group $RESOURCE_GROUP_DEV \
+        --template-file azuredeploy.json \
+        --parameters @azuredeploy.parameters.dev.json \
+        --name csom-platform-dev-${CI_COMMIT_SHORT_SHA} \
+        --mode Incremental
+  environment:
+    name: dev
+  only:
+    - develop
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "arm"'
+
+# Deploy ARM Template (Staging)
+deploy-arm-staging:
+  stage: deploy-infrastructure-staging
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az group create --name $RESOURCE_GROUP_STAGING --location westeurope || true
+  script:
+    - cd infrastructure/arm
+    - |
+      az deployment group create \
+        --resource-group $RESOURCE_GROUP_STAGING \
+        --template-file azuredeploy.json \
+        --parameters @azuredeploy.parameters.staging.json \
+        --name csom-platform-staging-${CI_COMMIT_SHORT_SHA} \
+        --mode Incremental
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "arm"'
+
+# Deploy ARM Template (Production) - Manual Approval Required
+deploy-arm-production:
+  stage: deploy-infrastructure-production
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az group create --name $RESOURCE_GROUP_PROD --location westeurope || true
+  script:
+    - cd infrastructure/arm
+    - |
+      az deployment group create \
+        --resource-group $RESOURCE_GROUP_PROD \
+        --template-file azuredeploy.json \
+        --parameters @azuredeploy.parameters.prod.json \
+        --name csom-platform-prod-${CI_COMMIT_TAG:-${CI_COMMIT_SHORT_SHA}} \
+        --mode Incremental
+  environment:
+    name: production
+  only:
+    - main
+    - tags
+  when: manual
+  rules:
+    - if: '$INFRASTRUCTURE_TOOL == "arm"'
+

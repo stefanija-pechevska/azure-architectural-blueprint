@@ -154,9 +154,11 @@ Choose one of the following options for deploying infrastructure:
      --query properties.outputs
    ```
 
-For detailed ARM template setup instructions, see [infrastructure/arm/README.md](../infrastructure/arm/README.md).
+For detailed ARM template setup instructions, see [infrastructure/arm/README.md](./infrastructure/arm/README.md).
 
 **Note:** After deploying with ARM templates, continue with the remaining phases (Database Setup, AKS Setup, etc.) as the infrastructure resources are now created.
+
+**For comprehensive infrastructure deployment examples, CI/CD integration, and best practices, see [INFRASTRUCTURE_DEPLOYMENT_GUIDE.md](./INFRASTRUCTURE_DEPLOYMENT_GUIDE.md).**
 
 #### Option B: Using Bicep (Azure Native DSL)
 

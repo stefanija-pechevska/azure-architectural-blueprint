@@ -4,21 +4,37 @@
 # Helm charts are located in infrastructure/helm/<service-name>/
 # 
 # Pipeline Stages:
-# 1. Build - Compile backend services
-# 2. Test - Run unit tests
-# 3. Security Scan - Vulnerability scanning
-# 4. Validate Helm - Validate Helm charts
-# 5. Build Images - Build and push Docker images to ACR
-# 6. Deploy Dev - Deploy to dev environment using Helm
-# 7. Integration Tests - Run integration tests
-# 8. Deploy Staging - Deploy to staging using Helm
-# 9. E2E Tests - End-to-end tests
-# 10. Deploy Production - Manual deployment to production using Helm
+# 1. Validate Infrastructure - Validate Terraform/Bicep/ARM templates
+# 2. Plan Infrastructure - Generate deployment plan (Terraform)
+# 3. Deploy Infrastructure - Deploy infrastructure to environments (optional, separate pipeline recommended)
+# 4. Build - Compile backend services
+# 5. Test - Run unit tests
+# 6. Security Scan - Vulnerability scanning
+# 7. Validate Helm - Validate Helm charts
+# 8. Build Images - Build and push Docker images to ACR
+# 9. Deploy Dev - Deploy to dev environment using Helm
+# 10. Integration Tests - Run integration tests
+# 11. Deploy Staging - Deploy to staging using Helm
+# 12. E2E Tests - End-to-end tests
+# 13. Deploy Production - Manual deployment to production using Helm
 #
+# Infrastructure Deployment:
+# - Infrastructure deployment is typically done in a separate pipeline or manually
+# - Uncomment infrastructure deployment stages if you want to deploy infrastructure via CI/CD
+# - See INFRASTRUCTURE_DEPLOYMENT_GUIDE.md for detailed examples and best practices
+#
+# Application Deployment:
 # To deploy a different service, override SERVICE_NAME variable in the job or use CI/CD variables.
 # Example: Set CI/CD variable SERVICE_NAME=product-service to deploy product service
 
 stages:
+  # Infrastructure stages (optional - uncomment if deploying infrastructure via CI/CD)
+  # - validate-infrastructure
+  # - plan-infrastructure
+  # - deploy-infrastructure-dev
+  # - deploy-infrastructure-staging
+  # - deploy-infrastructure-production
+  # Application stages
   - build
   - test
   - security-scan
@@ -97,6 +113,149 @@ validate-helm-charts:
     - merge_requests
     - main
     - develop
+
+# ==============================================================================
+# Infrastructure Deployment (Optional - Uncomment to enable)
+# ==============================================================================
+# 
+# Infrastructure deployment via CI/CD is optional. You can:
+# 1. Deploy infrastructure manually (see INFRASTRUCTURE_DEPLOYMENT_GUIDE.md)
+# 2. Use a separate infrastructure pipeline
+# 3. Uncomment the stages below to deploy infrastructure in this pipeline
+#
+# Note: Infrastructure deployment should typically happen before application
+# deployment. If using this pipeline, uncomment the infrastructure stages above.
+#
+# ==============================================================================
+
+# Validate Infrastructure - Terraform
+# validate-terraform:
+#   stage: validate-infrastructure
+#   image: hashicorp/terraform:latest
+#   before_script:
+#     - cd infrastructure/terraform
+#   script:
+#     - terraform init -backend=false
+#     - terraform validate
+#     - terraform fmt -check
+#   only:
+#     - merge_requests
+#     - main
+#     - develop
+#   allow_failure: false
+
+# Validate Infrastructure - Bicep
+# validate-bicep:
+#   stage: validate-infrastructure
+#   image: mcr.microsoft.com/azure-cli:latest
+#   before_script:
+#     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+#   script:
+#     - cd infrastructure/bicep
+#     - az bicep build --file main.bicep
+#     - az deployment group validate \
+#         --resource-group $RESOURCE_GROUP \
+#         --template-file main.bicep \
+#         --parameters @main.parameters.json
+#   only:
+#     - merge_requests
+#     - main
+#     - develop
+#   allow_failure: false
+
+# Deploy Infrastructure - Terraform (Development)
+# deploy-terraform-dev:
+#   stage: deploy-infrastructure-dev
+#   image: hashicorp/terraform:latest
+#   before_script:
+#     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+#     - cd infrastructure/terraform
+#     - terraform init
+#       -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT"
+#       -backend-config="container_name=$TF_STATE_CONTAINER"
+#       -backend-config="key=dev/terraform.tfstate"
+#       -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP"
+#   script:
+#     - terraform workspace select dev || terraform workspace new dev
+#     - terraform plan -out=tfplan-dev -var-file=terraform.tfvars.dev
+#     - terraform apply -auto-approve tfplan-dev
+#   environment:
+#     name: dev
+#   only:
+#     - develop
+#   when: manual
+
+# Deploy Infrastructure - Bicep (Development)
+# deploy-bicep-dev:
+#   stage: deploy-infrastructure-dev
+#   image: mcr.microsoft.com/azure-cli:latest
+#   before_script:
+#     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+#     - az group create --name rg-csom-platform-dev --location westeurope || true
+#   script:
+#     - cd infrastructure/bicep
+#     - |
+#       az deployment group create \
+#         --resource-group rg-csom-platform-dev \
+#         --template-file main.bicep \
+#         --parameters @main.parameters.dev.json \
+#         --name csom-platform-dev-${CI_COMMIT_SHORT_SHA} \
+#         --mode Incremental
+#   environment:
+#     name: dev
+#   only:
+#     - develop
+#   when: manual
+
+# Deploy Infrastructure - Production (Manual Approval Required)
+# deploy-terraform-production:
+#   stage: deploy-infrastructure-production
+#   image: hashicorp/terraform:latest
+#   before_script:
+#     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+#     - cd infrastructure/terraform
+#     - terraform init
+#       -backend-config="storage_account_name=$TF_STATE_STORAGE_ACCOUNT"
+#       -backend-config="container_name=$TF_STATE_CONTAINER"
+#       -backend-config="key=production/terraform.tfstate"
+#       -backend-config="resource_group_name=$TF_STATE_RESOURCE_GROUP"
+#   script:
+#     - terraform workspace select production || terraform workspace new production
+#     - terraform plan -out=tfplan-production -var-file=terraform.tfvars.production
+#     - terraform apply -auto-approve tfplan-production
+#   environment:
+#     name: production
+#   only:
+#     - main
+#     - tags
+#   when: manual
+
+# Deploy Infrastructure - Bicep (Production)
+# deploy-bicep-production:
+#   stage: deploy-infrastructure-production
+#   image: mcr.microsoft.com/azure-cli:latest
+#   before_script:
+#     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+#     - az group create --name rg-csom-platform-prod --location westeurope || true
+#   script:
+#     - cd infrastructure/bicep
+#     - |
+#       az deployment group create \
+#         --resource-group rg-csom-platform-prod \
+#         --template-file main.bicep \
+#         --parameters @main.parameters.prod.json \
+#         --name csom-platform-prod-${CI_COMMIT_TAG:-${CI_COMMIT_SHORT_SHA}} \
+#         --mode Incremental
+#   environment:
+#     name: production
+#   only:
+#     - main
+#     - tags
+#   when: manual
+
+# ==============================================================================
+# Application Deployment
+# ==============================================================================
 
 # Build Docker images
 build-docker-images:
