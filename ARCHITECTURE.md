@@ -10,20 +10,20 @@ This document outlines a production-ready, cloud-native microservices architectu
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
-   - [Business Domain](#11-business-domain)
-   - [Key Requirements](#12-key-requirements)
-2. [Non-Functional Requirements](#2-non-functional-requirements)
-   - [High Availability](#21-high-availability)
-   - [Scalability](#22-scalability)
-   - [Performance](#23-performance)
-   - [Reliability](#24-reliability)
-   - [Security](#25-security)
-   - [Maintainability](#26-maintainability)
-   - [Usability](#27-usability)
-   - [Compliance](#28-compliance)
-   - [Disaster Recovery](#29-disaster-recovery)
-3. [Architecture Diagram](#3-architecture-diagram)
-   - [Azure Services Architecture Diagram](#31-azure-services-architecture-diagram)
+   - [Architecture Purpose](#11-architecture-purpose)
+   - [Key Features](#12-key-features)
+2. [Architecture Diagram](#2-architecture-diagram)
+   - [Azure Services Architecture Diagram](#21-azure-services-architecture-diagram)
+3. [Non-Functional Requirements](#3-non-functional-requirements)
+   - [High Availability](#31-high-availability)
+   - [Scalability](#32-scalability)
+   - [Performance](#33-performance)
+   - [Reliability](#34-reliability)
+   - [Security](#35-security)
+   - [Maintainability](#36-maintainability)
+   - [Usability](#37-usability)
+   - [Compliance](#38-compliance)
+   - [Disaster Recovery](#39-disaster-recovery)
 4. [Component Architecture](#4-component-architecture)
    - [Frontend Layer](#41-frontend-layer)
    - [API Gateway Layer](#42-api-gateway-layer)
@@ -72,11 +72,159 @@ This document outlines a production-ready, cloud-native microservices architectu
 
 ---
 
-## 2. Non-Functional Requirements
+## 2. Architecture Diagram
+
+This section provides visual representations of the system architecture, including the overall system design and Azure services used.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│  EXTERNAL USERS                           │              INTERNAL USERS                      │
+│  Entra External ID Authentication         │              Entra ID Authentication             │
+└──────────────────┬────────────────────────┴──────────────────────┬──────────────────────────┘
+                   │                                               │
+┌──────────────────▼────────────────────────┐  ┌───────────────────▼──────────────────────────┐
+│  EXTERNAL REACT WEB APPLICATION          │  │  INTERNAL REACT WEB APPLICATION               │
+│  (Microfrontends)                        │  │  (Microfrontends)                              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │   MFE 1  │  │   MFE 2  │  │   MFE 3  ││  │  │   MFE 1  │  │   MFE 2  │  │   MFE 3  │   │
+│  │ (Public) │  │ (Public) │  │ (Public) ││  │  │ (Admin)  │  │ (Admin)  │  │ (Admin)  │   │
+│  └──────────┘  └──────────┘  └──────────┘│  │  └──────────┘  └──────────┘  └──────────┘   │
+│  ┌──────────┐                            │  │  ┌──────────┐                                │
+│  │   MFE 4  │                            │  │  │   MFE 4  │                                │
+│  │(Notifications)                        │  │  │(Analytics)                                │
+│  └──────────┘                            │  │  └──────────┘                                │
+└──────────────────┬────────────────────────┘  └──┴──────────────────────────────────────────┘
+                   │                                               │
+┌───────────────────▼──────────────────────────┐  ┌───────────────────▼──────────────────────────┐
+│  API GATEWAY (External)                     │  │  API GATEWAY (Internal)                      │
+│  Apigee / Azure API Management              │  │  Apigee / Azure API Management               │
+│  ┌────────────────────────────────────────┐ │  │  ┌────────────────────────────────────┐     │
+│  │ • Entra External ID JWT Validation     │ │  │  │ • Entra ID JWT Validation           │     │
+│  │ • Rate Limiting                        │ │  │  │ • Rate Limiting                     │     │
+│  │ • CORS Policies                        │ │  │  │ • IP Whitelisting                   │     │
+│  │ • Request/Response Transform            │ │  │  │ • Request/Response Transform        │     │
+│  │ • API Versioning & Analytics           │ │  │  │ • API Versioning & Analytics       │     │
+│  └────────────────────────────────────────┘ │  │  └────────────────────────────────────┘     │
+└───────────────────┬──────────────────────────┘  └───┬────────────────────────────────────────────┘
+                    │                                  │
+                    └──────────────┬───────────────────┘
+                                   │
+                    ┌──────────────▼───────────────────┐
+                    │  AZURE KUBERNETES SERVICE (AKS) │
+                    │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+                    │  │  Service 1   │  │  Service 2   │  │  Service 3   │ │
+                    │  │(Example)     │  │(Example)     │  │(Example)     │ │
+                    │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
+                    │         │                 │                 │         │
+                    │  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐ │
+                    │  │  Service 4   │  │  Service 5   │  │  Service 6   │ │
+                    │  │(Example)     │  │(Example)     │  │(Example)     │ │
+                    │  └─────────────┘  └──────┬───────┘  └───────────────┘ │
+                    │                          │                           │
+                    │  ┌───────────────────────▼────────────────────────┐ │
+                    │  │              Service Mesh (Istio)              │ │
+                    │  │  • Service Discovery  • Load Balancing         │ │
+                    │  │  • Circuit Breakers  • mTLS                   │ │
+                    │  │  • Observability                              │ │
+                    │  └────────────────────────────────────────────────┘ │
+                    └──────────────────────────┬───────────────────────────┘
+                                               │
+                    ┌──────────────────────────┼──────────────────────────┐
+                    │                          │                          │
+        ┌───────────▼────────┐   ┌──────────────▼──────────┐   ┌──────────▼────────┐
+        │  PostgreSQL        │   │  Azure Service Bus      │   │  Azure Event Grid │
+        │  (Primary DB)     │   │  (Messaging)             │   │  (Events)         │
+        └────────────────────┘   └──────────────────────────┘   └───────────────────┘
+                                               │
+                    ┌──────────────────────────┼──────────────────────────┐
+                    │                          │                          │
+        ┌───────────▼────────┐   ┌──────────────▼──────────┐   ┌──────────▼────────┐
+        │  Legacy SOAP        │   │  External API 1         │   │  External API 2   │
+        │  Service            │   │  (REST API)             │   │  (REST API)       │
+        └─────────────────────┘   └──────────────────────────┘   └───────────────────┘
+```
+
+---
+
+### 2.1 Azure Services Architecture Diagram
+
+This diagram illustrates all Azure services used in the template and their relationships:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           AZURE CLOUD PLATFORM                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        │                           │                           │
+┌───────▼────────┐        ┌─────────▼─────────┐      ┌─────────▼─────────┐
+│  Azure Static │        │  Azure App         │      │  Entra ID /        │
+│  Web Apps     │        │  Service           │      │  External ID       │
+│  (External    │        │  (Internal         │      │                    │
+│   Frontend)   │        │   Frontend)         │      │  (Authentication)  │
+└───────┬────────┘        └─────────┬─────────┘      └─────────┬─────────┘
+        │                            │                           │
+        │                            │                           │
+┌───────▼────────┐        ┌─────────▼─────────┐                 │
+│  External API  │        │  Internal API     │                 │
+│  Proxy         │        │  Proxy            │                 │
+│  (Apigee)      │        │  (Apigee)         │                 │
+└───────┬────────┘        └─────────┬─────────┘                 │
+        │                            │                           │
+        └────────────────────────────┼───────────────────────────┘
+                                     │
+┌─────────────────────────────────────▼─────────────────────────────────────┐
+│                    APIGEE API MANAGEMENT                                    │
+│                    (or Azure API Management)                                 │
+└─────────────────────────────────────┬─────────────────────────────────────┘
+                                     │
+┌─────────────────────────────────────▼─────────────────────────────────────┐
+│                    AZURE KUBERNETES SERVICE (AKS)                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │  Service 1   │  │  Service 2   │  │  Service 3   │  │  Service 4   │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
+└─────────────────────────────────────┬─────────────────────────────────────┘
+                                     │
+        ┌────────────────────────────┼────────────────────────────┐
+        │                            │                            │
+┌───────▼────────┐        ┌──────────▼──────────┐    ┌──────────▼──────────┐
+│  PostgreSQL    │        │  Azure Service Bus  │    │  Azure Redis Cache  │
+│  (Database)    │        │  (Messaging)        │    │  (Caching)          │
+└───────┬────────┘        └──────────────────────┘    └──────────────────────┘
+        │
+┌───────▼────────┐
+│  Azure Key     │
+│  Vault         │
+│  (Secrets)     │
+└───────┬────────┘
+        │
+┌───────▼────────┐        ┌──────────▼──────────┐    ┌──────────▼──────────┐
+│  Azure Blob    │        │  Azure Functions    │    │  Application        │
+│  Storage       │        │  (Serverless)       │    │  Insights           │
+│  (Archiving)   │        │                     │    │  (Monitoring)       │
+└────────────────┘        └──────────────────────┘    └──────────────────────┘
+```
+
+**Key Azure Services**:
+- **Azure Kubernetes Service (AKS)**: Container orchestration for microservices
+- **Azure Database for PostgreSQL**: Primary database for persistent storage
+- **Azure Service Bus**: Asynchronous messaging and event-driven architecture
+- **Azure Redis Cache**: In-memory caching for performance optimization
+- **Azure Key Vault**: Secrets management and certificate storage
+- **Azure Blob Storage**: File storage and archiving
+- **Azure Functions**: Serverless compute for housekeeping jobs
+- **Application Insights**: Application performance monitoring and observability
+- **Entra ID / External ID**: Authentication and authorization
+- **Azure API Management / Apigee**: API gateway and management
+- **Azure Static Web Apps / App Service**: Frontend hosting
+
+---
+
+## 3. Non-Functional Requirements
 
 This section defines the non-functional requirements (NFRs) that the system must meet. These requirements focus on system qualities such as availability, scalability, performance, and reliability rather than specific functional features.
 
-### 2.1 High Availability
+### 3.1 High Availability
 
 **Requirement**: The system must maintain high availability with minimal downtime.
 
@@ -84,6 +232,8 @@ This section defines the non-functional requirements (NFRs) that the system must
 - **Uptime SLA**: 99.9% (maximum 43.8 minutes downtime per month)
 - **Planned Maintenance Window**: Maximum 4 hours per month (scheduled during low-traffic periods)
 - **Unplanned Downtime**: Maximum 0.1% (43.8 minutes per month)
+
+**Note**: These metrics are examples and should be adjusted based on your specific requirements.
 
 **Implementation Strategy**:
 
@@ -125,7 +275,7 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ---
 
-### 2.2 Scalability
+### 3.2 Scalability
 
 **Requirement**: The system must scale horizontally and vertically to handle varying loads.
 
@@ -150,7 +300,7 @@ This section defines the non-functional requirements (NFRs) that the system must
    - **Partitioning**: Table partitioning for large datasets (orders, audit logs)
 
 3. **Caching Strategy**
-   - **Redis Cache**: Cache frequently accessed data (products, customer profiles)
+   - **Redis Cache**: Cache frequently accessed data (example: business entities, user profiles)
    - **CDN**: Azure Front Door for static assets and API responses
    - **Application-Level Caching**: In-memory caching in Spring Boot services
 
@@ -172,11 +322,11 @@ This section defines the non-functional requirements (NFRs) that the system must
 - Memory utilization > 80% for 5 minutes
 - Request queue length > 100
 - Response time > 500ms (p95)
-- Custom business metrics (e.g., order queue depth)
+- Custom business metrics (e.g., queue depth, request rate)
 
 ---
 
-### 2.3 Performance
+### 3.3 Performance
 
 **Requirement**: The system must meet specified performance targets for response times and throughput.
 
@@ -227,7 +377,7 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ---
 
-### 2.4 Reliability
+### 3.4 Reliability
 
 **Requirement**: The system must operate reliably with minimal errors and automatic recovery.
 
@@ -265,7 +415,7 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ---
 
-### 2.5 Security
+### 3.5 Security
 
 **Requirement**: The system must implement comprehensive security measures to protect data and services.
 
@@ -309,7 +459,7 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ---
 
-### 2.6 Maintainability
+### 3.6 Maintainability
 
 **Requirement**: The system must be maintainable with clear documentation, monitoring, and operational procedures.
 
@@ -347,7 +497,7 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ---
 
-### 2.7 Usability
+### 3.7 Usability
 
 **Requirement**: The system must provide an intuitive and responsive user experience.
 
@@ -385,7 +535,7 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ---
 
-### 2.8 Compliance
+### 3.8 Compliance
 
 **Requirement**: The system must comply with relevant regulations and standards.
 
@@ -418,7 +568,7 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ---
 
-### 2.9 Disaster Recovery
+### 3.9 Disaster Recovery
 
 **Requirement**: The system must have robust disaster recovery procedures to minimize data loss and downtime.
 
@@ -566,13 +716,13 @@ This diagram illustrates all Azure services used in the platform and their relat
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
 │  │  Microservices Pods:                                                │   │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐          │   │
-│  │  │  Order   │  │ Product  │  │ Customer │  │ Payment  │          │   │
-│  │  │ Service  │  │ Service  │  │ Service │  │ Service  │          │   │
+│  │  │ Service 1│  │ Service 2│  │ Service 3│  │ Service 4│          │   │
+│  │  │(Example) │  │(Example) │  │(Example) │  │(Example) │          │   │
 │  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘          │   │
 │  │       │            │             │             │                  │   │
 │  │  ┌────▼─────┐  ┌───▼──────┐  ┌───▼──────┐                        │   │
-│  │  │Notification│ │  Audit   │  │  Other   │                        │   │
-│  │  │  Service  │ │ Service  │  │ Services │                        │   │
+│  │  │ Service 5│  │ Service 6│  │  Other   │                        │   │
+│  │  │(Example) │  │(Example) │  │ Services │                        │   │
 │  │  └──────────┘  └──────────┘  └──────────┘                        │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 └───────────────────────────────────────┬─────────────────────────────────────┘
@@ -590,17 +740,17 @@ This diagram illustrates all Azure services used in the platform and their relat
                                         │
 ┌───────────────────────────────────────▼─────────────────────────────────────┐
 │                    AZURE SERVICE BUS (Messaging)                             │
-│  • order-events topic                                                       │
-│  • payment-events topic                                                     │
-│  • notification-events topic                                                 │
-│  • gdpr-events topic                                                         │
+│  • service-events topic (example)                                           │
+│  • business-events topic (example)                                          │
+│  • notification-events topic (example)                                       │
+│  • audit-events topic (example)                                              │
 └───────────────────────────────────────┬─────────────────────────────────────┘
                                         │
 ┌───────────────────────────────────────▼─────────────────────────────────────┐
 │                    AZURE EVENT GRID (Event-Driven)                           │
-│  • Order lifecycle events                                                   │
-│  • Payment events                                                           │
-│  • GDPR events                                                              │
+│  • Service lifecycle events (example)                                        │
+│  • Business events (example)                                                 │
+│  • Compliance events (example)                                               │
 └───────────────────────────────────────┬─────────────────────────────────────┘
                                         │
 ┌───────────────────────────────────────▼─────────────────────────────────────┐
@@ -620,8 +770,8 @@ This diagram illustrates all Azure services used in the platform and their relat
 │                    AZURE BLOB STORAGE (Archiving)                            │
 │  • archive container - Archived files and documents                         │
 │  • audit-logs container - Archived audit logs for compliance                │
-│  • gdpr-data container - GDPR export and anonymized data                    │
-│  • customer-documents container - Customer documents and attachments        │
+│  • compliance-data container - Compliance export and anonymized data        │
+│  • documents container - User documents and attachments                     │
 │  • Lifecycle management - Auto-tiering (Hot → Cool → Archive)               │
 │  • Automated deletion after retention period (7 years)                      │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -711,20 +861,20 @@ This diagram illustrates all Azure services used in the platform and their relat
 **Authentication**: Entra ID
 
 **Microfrontends**:
-1. **Admin Dashboard Microfrontend**
+1. **Example MFE 1** (Admin Dashboard)
    - System overview, metrics, dashboards
    - Administrative tools
 
-2. **Orders Management Microfrontend**
-   - Order management and processing
-   - Order status updates, fulfillment
+2. **Example MFE 2** (Management)
+   - Management and processing features
+   - Status updates and fulfillment
 
-3. **Customers Management Microfrontend**
-   - Customer service tools
-   - Customer data management
-   - GDPR compliance tools
+3. **Example MFE 3** (Data Management)
+   - Data management tools
+   - User data management
+   - Compliance tools
 
-4. **Analytics & Reports Microfrontend**
+4. **Example MFE 4** (Analytics)
    - Business analytics
    - Reporting and insights
 
@@ -964,7 +1114,7 @@ All services deployed on AKS with:
 **Integrations**:
 - Integrates with external REST payment gateway
 - Called by Order Service
-- Publishes payment events
+- Publishes business events (example)
 
 ---
 
