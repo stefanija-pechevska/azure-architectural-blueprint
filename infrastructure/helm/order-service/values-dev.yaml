@@ -1,0 +1,37 @@
+# Development environment values for order-service
+replicaCount: 1
+
+image:
+  tag: "dev"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+
+env:
+  springProfilesActive: "dev"
+  loggingLevel: "DEBUG"
+
+namespace: "dev"
+
+livenessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+readinessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+podDisruptionBudget:
+  enabled: false
+
+terminationGracePeriodSeconds: 10
+
+

@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "order-service.fullname" . }}
+  namespace: {{ include "order-service.namespace" . }}
+  labels:
+    {{- include "order-service.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    {{- toYaml .Values.deploymentStrategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "order-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "order-service.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "order-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            {{- if .Values.env.postgresHost }}
+            - name: POSTGRES_HOST
+              value: {{ .Values.env.postgresHost | quote }}
+            {{- end }}
+            {{- if .Values.env.postgresUser }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.postgresSecret }}
+                  key: username
+            {{- end }}
+            {{- if .Values.env.postgresPassword }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.postgresSecret }}
+                  key: password
+            {{- end }}
+            - name: POSTGRES_DATABASE
+              value: {{ .Values.env.postgresDatabase | quote }}
+            {{- if .Values.env.keyVaultName }}
+            - name: KEY_VAULT_NAME
+              value: {{ .Values.env.keyVaultName | quote }}
+            {{- end }}
+            {{- if .Values.env.serviceBusConnectionString }}
+            - name: SERVICE_BUS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.serviceBusSecret }}
+                  key: connectionString
+            {{- end }}
+            {{- if .Values.env.serviceBusNamespace }}
+            - name: SERVICE_BUS_NAMESPACE
+              value: {{ .Values.env.serviceBusNamespace | quote }}
+            {{- end }}
+            {{- if .Values.env.redisCacheHost }}
+            - name: REDIS_CACHE_HOST
+              value: {{ .Values.env.redisCacheHost | quote }}
+            {{- end }}
+            - name: REDIS_CACHE_PORT
+              value: {{ .Values.env.redisCachePort | quote }}
+            {{- if .Values.env.redisCachePassword }}
+            - name: REDIS_CACHE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.redisSecret }}
+                  key: password
+            {{- end }}
+            {{- if .Values.env.entraInternalTenantId }}
+            - name: ENTRA_INTERNAL_TENANT_ID
+              value: {{ .Values.env.entraInternalTenantId | quote }}
+            {{- end }}
+            {{- if .Values.env.entraExternalTenantId }}
+            - name: ENTRA_EXTERNAL_TENANT_ID
+              value: {{ .Values.env.entraExternalTenantId | quote }}
+            {{- end }}
+            {{- if .Values.env.entraInternalClientId }}
+            - name: ENTRA_INTERNAL_CLIENT_ID
+              value: {{ .Values.env.entraInternalClientId | quote }}
+            {{- end }}
+            {{- if .Values.env.entraExternalClientId }}
+            - name: ENTRA_EXTERNAL_CLIENT_ID
+              value: {{ .Values.env.entraExternalClientId | quote }}
+            {{- end }}
+            {{- if .Values.env.appInsightsInstrumentationKey }}
+            - name: APPLICATIONINSIGHTS_INSTRUMENTATION_KEY
+              value: {{ .Values.env.appInsightsInstrumentationKey | quote }}
+            {{- end }}
+            {{- if .Values.env.appInsightsConnectionString }}
+            - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+              value: {{ .Values.env.appInsightsConnectionString | quote }}
+            {{- end }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.env.springProfilesActive | quote }}
+            - name: SERVER_PORT
+              value: {{ .Values.env.serverPort | quote }}
+            - name: LOGGING_LEVEL
+              value: {{ .Values.env.loggingLevel | quote }}
+          {{- if .Values.configMap.create }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.configMap.name }}
+          {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- if .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+

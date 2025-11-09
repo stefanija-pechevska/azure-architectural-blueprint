@@ -1,0 +1,54 @@
+# Production environment values for order-service
+replicaCount: 5
+
+image:
+  tag: "latest"  # Use specific version tags in production
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+env:
+  springProfilesActive: "production"
+  loggingLevel: "INFO"
+
+namespace: "production"
+
+livenessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
+
+terminationGracePeriodSeconds: 30
+
+# Production-specific annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 2
+    maxUnavailable: 1
+
+

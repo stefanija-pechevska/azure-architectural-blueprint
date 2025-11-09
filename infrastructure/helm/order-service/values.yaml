@@ -1,0 +1,180 @@
+# Default values for order-service
+# This is a YAML-formatted file.
+
+replicaCount: 3
+
+image:
+  repository: acrcsomplatform.azurecr.io/order-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: order-service.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: order-service-tls
+  #    hosts:
+  #      - order-service.local
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Environment variables
+env:
+  # Database configuration
+  postgresHost: ""
+  postgresUser: ""
+  postgresPassword: ""
+  postgresDatabase: "ordersdb"
+  
+  # Key Vault
+  keyVaultName: "kv-csom-platform-prod"
+  
+  # Service Bus
+  serviceBusConnectionString: ""
+  serviceBusNamespace: "sb-csom-platform-prod"
+  
+  # Redis Cache
+  redisCacheHost: ""
+  redisCachePort: "6380"
+  redisCachePassword: ""
+  
+  # Entra ID
+  entraInternalTenantId: ""
+  entraExternalTenantId: ""
+  entraInternalClientId: ""
+  entraExternalClientId: ""
+  
+  # Application Insights
+  appInsightsInstrumentationKey: ""
+  appInsightsConnectionString: ""
+  
+  # Application configuration
+  springProfilesActive: "production"
+  serverPort: "8080"
+  loggingLevel: "INFO"
+
+# Secrets configuration
+secrets:
+  # Use existing secrets or create new ones
+  postgresSecret: "postgres-secrets"
+  serviceBusSecret: "servicebus-secrets"
+  redisSecret: ""
+  keyVaultSecret: ""
+
+# ConfigMap configuration
+configMap:
+  create: true
+  name: "order-service-config"
+  data: {}
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+# Deployment strategy
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Service monitor for Prometheus (if using)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+
+# Labels and annotations
+commonLabels: {}
+commonAnnotations: {}
+
+# Namespace
+namespace: "production"
+
+# Termination grace period
+terminationGracePeriodSeconds: 30
+
+

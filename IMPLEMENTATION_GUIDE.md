@@ -810,10 +810,26 @@ In GitLab → Settings → CI/CD → Variables, add:
    docker push acrcsomplatform.azurecr.io/order-service:latest
    ```
 
-5. **Deploy to AKS**
+5. **Deploy to AKS using Helm** (Recommended)
+   ```bash
+   # Navigate to Helm chart directory
+   cd infrastructure/helm/order-service
+   
+   # Install/upgrade using Helm
+   helm upgrade --install order-service . \
+     --namespace production \
+     --values values-prod.yaml \
+     --set image.tag=latest \
+     --wait \
+     --timeout 5m
+   ```
+   
+   **Alternative: Deploy using kubectl** (for testing)
    ```bash
    kubectl apply -f infrastructure/kubernetes/order-service/
    ```
+   
+   For detailed Helm usage, see [HELM_GUIDE.md](./HELM_GUIDE.md).
 
 ### Step 6.2: Repeat for Other Services
 

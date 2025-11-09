@@ -1400,11 +1400,22 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 ### 6.3 Kubernetes Deployment
 - **Namespaces**: `dev`, `staging`, `production`
-- **Deployments**: Each microservice as separate deployment
+- **Package Management**: Helm charts for microservices deployment
+- **Deployments**: Each microservice as separate deployment (managed via Helm)
 - **Services**: ClusterIP for internal, LoadBalancer for external
 - **Ingress**: NGINX Ingress Controller with TLS
-- **ConfigMaps**: Application configuration
+- **ConfigMaps**: Application configuration (via Helm values)
 - **Secrets**: Retrieved from Azure Key Vault (via CSI driver) or HashiCorp Vault (via Vault Agent)
+- **Helm Charts**: Standardized Helm charts for all microservices with environment-specific values files
+
+**Helm Benefits**:
+- Consistent deployment structure across all services
+- Environment-specific configurations (dev, staging, prod)
+- Version management and rollback capabilities
+- CI/CD integration for automated deployments
+- Template-based configuration management
+
+For detailed Helm usage, see [HELM_GUIDE.md](./HELM_GUIDE.md).
 
 ---
 

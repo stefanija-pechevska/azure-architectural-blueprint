@@ -87,9 +87,10 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Comprehensive technical architecture blueprint
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - Step-by-step implementation guide
 - **[GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md)** - GDPR compliance implementation details
-- **[INFRASTRUCTURE_AS_CODE_COMPARISON.md](./INFRASTRUCTURE_AS_CODE_COMPARISON.md)** - Bicep vs Terraform comparison
+- **[INFRASTRUCTURE_AS_CODE_COMPARISON.md](./INFRASTRUCTURE_AS_CODE_COMPARISON.md)** - Bicep vs Terraform vs ARM Templates comparison
 - **[API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARISON.md)** - Apigee vs Azure API Management comparison
 - **[SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANAGEMENT_COMPARISON.md)** - HashiCorp Vault vs Azure Key Vault comparison
+- **[HELM_GUIDE.md](./HELM_GUIDE.md)** - Helm charts guide for Kubernetes deployments
 
 ---
 
@@ -101,6 +102,7 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - Azure CLI installed and configured
 - Docker installed
 - kubectl installed
+- **Helm 3.x** (for Kubernetes deployments)
 - Maven 3.9+ and Java 17+
 - Node.js 20+ and npm
 - GitLab account (or GitLab CI/CD runner)
@@ -294,6 +296,7 @@ azure-architectural-blueprint/
 │   ├── bicep/                 # Azure Bicep templates
 │   ├── terraform/             # Terraform configuration files
 │   ├── kubernetes/            # Kubernetes manifests
+│   ├── helm/                  # Helm charts for microservices
 │   └── database/              # Database migrations
 ├── apigee/
 │   └── proxies/               # Apigee API proxy configs

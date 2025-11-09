@@ -1,0 +1,15 @@
+apiVersion: v2
+name: order-service
+description: A Helm chart for Order Service microservice
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - microservice
+  - spring-boot
+  - order-service
+maintainers:
+  - name: CSOM Platform Team
+dependencies: []
+
+
