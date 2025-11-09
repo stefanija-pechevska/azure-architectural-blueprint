@@ -106,19 +106,75 @@ This guide provides detailed steps to implement the PoC system from scratch.
 
 ---
 
-### Step 1.3: Azure Container Registry (ACR)
+### Step 1.3: Infrastructure Deployment
 
-```bash
-# Create ACR
-az acr create \
-  --resource-group rg-csom-platform-prod \
-  --name acrcsomplatform \
-  --sku Standard \
-  --admin-enabled true
+Choose one of the following options for deploying infrastructure:
 
-# Get login credentials
-az acr credential show --name acrcsomplatform
-```
+#### Option A: Using Bicep (Azure Native)
+
+See Phase 1.4 and subsequent phases for Bicep-based deployment steps.
+
+#### Option B: Using Terraform (Multi-Cloud)
+
+**Prerequisites:**
+- Terraform >= 1.5.0 installed
+- Azure CLI configured
+
+**Steps:**
+
+1. **Navigate to Terraform directory**
+   ```bash
+   cd infrastructure/terraform
+   ```
+
+2. **Copy and configure variables**
+   ```bash
+   cp terraform.tfvars.example terraform.tfvars
+   # Edit terraform.tfvars with your values
+   # Update postgres_admin_password and other sensitive values
+   ```
+
+3. **Initialize Terraform**
+   ```bash
+   terraform init
+   ```
+
+4. **Plan deployment**
+   ```bash
+   terraform plan
+   ```
+
+5. **Apply configuration**
+   ```bash
+   terraform apply
+   # Type 'yes' when prompted, or use -auto-approve flag
+   ```
+
+6. **View outputs**
+   ```bash
+   terraform output
+   ```
+
+7. **Store connection strings in Key Vault**
+   ```bash
+   # Get outputs
+   ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
+   POSTGRES_FQDN=$(terraform output -raw postgres_fqdn)
+   REDIS_HOST=$(terraform output -raw redis_cache_hostname)
+   REDIS_KEY=$(terraform output -raw redis_cache_primary_key)
+   BLOB_STORAGE_CONN=$(terraform output -raw blob_storage_connection_string)
+   
+   # Store in Key Vault
+   az keyvault secret set --vault-name kv-csom-platform-prod --name acr-login-server --value "$ACR_LOGIN_SERVER"
+   az keyvault secret set --vault-name kv-csom-platform-prod --name postgres-fqdn --value "$POSTGRES_FQDN"
+   az keyvault secret set --vault-name kv-csom-platform-prod --name redis-host --value "$REDIS_HOST"
+   az keyvault secret set --vault-name kv-csom-platform-prod --name redis-primary-key --value "$REDIS_KEY"
+   az keyvault secret set --vault-name kv-csom-platform-prod --name blob-storage-connection-string --value "$BLOB_STORAGE_CONN"
+   ```
+
+For detailed Terraform setup instructions, see [infrastructure/terraform/README.md](../infrastructure/terraform/README.md).
+
+**Note:** After deploying with Terraform, continue with the remaining phases (Database Setup, AKS Setup, etc.) as the infrastructure resources are now created.
 
 ---
 

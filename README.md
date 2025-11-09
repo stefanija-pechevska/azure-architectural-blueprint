@@ -87,6 +87,9 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Comprehensive technical architecture blueprint
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - Step-by-step implementation guide
 - **[GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md)** - GDPR compliance implementation details
+- **[INFRASTRUCTURE_AS_CODE_COMPARISON.md](./INFRASTRUCTURE_AS_CODE_COMPARISON.md)** - Bicep vs Terraform comparison
+- **[API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARISON.md)** - Apigee vs Azure API Management comparison
+- **[SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANAGEMENT_COMPARISON.md)** - HashiCorp Vault vs Azure Key Vault comparison
 
 ---
 
@@ -101,6 +104,7 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - Maven 3.9+ and Java 17+
 - Node.js 20+ and npm
 - GitLab account (or GitLab CI/CD runner)
+- **Terraform >= 1.5.0** (optional, for Terraform deployment)
 
 ### 1. Clone Repository
 
@@ -241,6 +245,7 @@ azure-architectural-blueprint/
 │   └── audit-service/         # Audit & logging service
 ├── infrastructure/
 │   ├── bicep/                 # Azure Bicep templates
+│   ├── terraform/             # Terraform configuration files
 │   ├── kubernetes/            # Kubernetes manifests
 │   └── database/              # Database migrations
 ├── apigee/
@@ -253,6 +258,7 @@ azure-architectural-blueprint/
 │   └── policies/              # Vault access policies
 ├── API_GATEWAY_COMPARISON.md  # Apigee vs Azure API Management comparison
 ├── SECRETS_MANAGEMENT_COMPARISON.md  # HashiCorp Vault vs Azure Key Vault comparison
+├── INFRASTRUCTURE_AS_CODE_COMPARISON.md  # Bicep vs Terraform comparison
 ├── ARCHITECTURE.md            # Architecture documentation
 ├── IMPLEMENTATION_GUIDE.md    # Implementation guide
 ├── GDPR_COMPLIANCE.md         # GDPR compliance guide

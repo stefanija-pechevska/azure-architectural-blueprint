@@ -1,0 +1,24 @@
+# Terraform Variables Configuration
+# Copy this file to terraform.tfvars and update with your values
+# DO NOT commit terraform.tfvars to version control
+
+resource_group_name      = "rg-csom-platform-prod"
+location                 = "westeurope"
+aks_cluster_name         = "aks-csom-platform-prod"
+postgres_server_name     = "psql-csom-platform-prod"
+postgres_admin_username  = "csomadmin"
+postgres_admin_password  = "YourSecurePassword123!" # Change this!
+acr_name                 = "acrcsomplatform"
+key_vault_name           = "kv-csom-platform-prod"
+service_bus_namespace_name = "sb-csom-platform-prod"
+redis_cache_name         = "redis-csom-platform-prod"
+functions_app_name       = "func-csom-platform-prod"
+blob_storage_account_name = "stcsomarchiveprod"
+
+tags = {
+  Environment = "Production"
+  Project     = "CSOM Platform"
+  ManagedBy   = "Terraform"
+  Owner       = "DevOps Team"
+}
+
