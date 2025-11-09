@@ -1146,7 +1146,7 @@ All services deployed on AKS with:
 **Deployment**: Azure Database for PostgreSQL Flexible Server
 
 **Database Structure**:
-- Separate schemas per service (orders, products, customers, notifications, payments, audit)
+- Separate schemas per service (service1, service2, service3, service4, service5, service6)
 - Connection pooling via PgBouncer
 - Read replicas for scaling
 - Automated backups with point-in-time recovery
