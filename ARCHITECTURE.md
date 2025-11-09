@@ -997,80 +997,80 @@ All services deployed on AKS with:
 - API documentation is auto-generated from OpenAPI specs
 - OpenAPI specs can be imported into either Apigee or Azure API Management
 
-#### 4.3.1 Order Service
+#### 4.3.1 Example Service 1
 **Responsibilities**:
-- Order creation, updates, status tracking
-- Order history retrieval
-- Order validation and business rules
+- Example entity creation, updates, status tracking
+- Example history retrieval
+- Example validation and business rules
 
 **REST API Endpoints** (exposed via Apigee):
-- `POST /api/v1/orders` - Create order
-- `GET /api/v1/orders/{id}` - Get order details
-- `GET /api/v1/orders` - List orders (with filters)
-- `PUT /api/v1/orders/{id}/status` - Update status
-- `DELETE /api/v1/orders/{id}` - Cancel order (GDPR compliant)
+- `POST /api/v1/examples` - Create example entity
+- `GET /api/v1/examples/{id}` - Get example details
+- `GET /api/v1/examples` - List examples (with filters)
+- `PUT /api/v1/examples/{id}/status` - Update status
+- `DELETE /api/v1/examples/{id}` - Delete example (compliance compliant)
 
 **OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
-**Database**: `orders` schema in PostgreSQL
-- Tables: `orders`, `order_items`, `order_status_history`
+**Database**: `service1` schema in PostgreSQL
+- Tables: `examples`, `example_items`, `example_status_history`
 
 **Integrations**:
-- Calls Payment Service for payment processing
-- Calls Product Service for inventory validation
+- Calls Example Service 5 for processing
+- Calls Example Service 2 for validation
 - Publishes events to Azure Service Bus
 
 ---
 
-#### 4.3.2 Product Service
+#### 4.3.2 Example Service 2
 **Responsibilities**:
-- Product catalog management
-- Inventory tracking
-- Product search and filtering
+- Example catalog management
+- Example tracking
+- Example search and filtering
 
 **REST API Endpoints** (exposed via Apigee):
-- `GET /api/v1/products` - List products
-- `GET /api/v1/products/{id}` - Get product details
-- `POST /api/v1/products` - Create product (internal only)
-- `PUT /api/v1/products/{id}` - Update product (internal only)
-- `GET /api/v1/products/search` - Search products
+- `GET /api/v1/examples` - List examples
+- `GET /api/v1/examples/{id}` - Get example details
+- `POST /api/v1/examples` - Create example (internal only)
+- `PUT /api/v1/examples/{id}` - Update example (internal only)
+- `GET /api/v1/examples/search` - Search examples
 
 **OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
-**Database**: `products` schema in PostgreSQL
-- Tables: `products`, `product_categories`, `inventory`
+**Database**: `service2` schema in PostgreSQL
+- Tables: `examples`, `example_categories`, `inventory`
 
 **Integrations**:
-- Called by Order Service for validation
-- Integrates with legacy SOAP ERP for inventory sync
+- Called by Example Service 1 for validation
+- Integrates with external SOAP API (example)
 
 ---
 
-#### 4.3.3 Customer Service
+#### 4.3.3 Example Service 3
 **Responsibilities**:
-- Customer profile management
-- GDPR data management (right to access, deletion)
-- Customer segmentation
+- User profile management
+- Data management (right to access, deletion)
+- User segmentation
 
 **REST API Endpoints** (exposed via Apigee):
-- `GET /api/v1/customers/{id}` - Get customer profile
-- `PUT /api/v1/customers/{id}` - Update profile
-- `POST /api/v1/customers/{id}/gdpr/export` - GDPR data export
-- `DELETE /api/v1/customers/{id}` - GDPR data deletion
-- `GET /api/v1/customers/{id}/orders` - Customer order history
+- `GET /api/v1/users/{id}` - Get user profile
+- `PUT /api/v1/users/{id}` - Update profile
+- `POST /api/v1/users/{id}/data/export` - Data export
+- `DELETE /api/v1/users/{id}` - Data deletion
+- `GET /api/v1/users/{id}/history` - User history
 
 **OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
-**Database**: `customers` schema in PostgreSQL
-- Tables: `customers`, `customer_preferences`, `gdpr_audit_log`
+**Database**: `service3` schema in PostgreSQL
+- Tables: `users`, `user_preferences`, `compliance_audit_log`
 
 **Integrations**:
-- Called by Order Service for customer validation
-- Publishes GDPR events to Audit Service
+- Called by Example Service 1 for user validation
+- Publishes compliance events to Example Service 6
 
 ---
 
-#### 4.3.4 Notification Service
+#### 4.3.4 Example Service 4 (Notification Service)
 **Responsibilities**:
 - Real-time notifications (WebSocket/SSE)
 - Email notifications via Azure Communication Services
@@ -1085,7 +1085,7 @@ All services deployed on AKS with:
 
 **OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
-**Database**: `notifications` schema in PostgreSQL
+**Database**: `service4` schema in PostgreSQL
 - Tables: `notifications`, `notification_preferences`
 
 **Integrations**:
@@ -1095,44 +1095,44 @@ All services deployed on AKS with:
 
 ---
 
-#### 4.3.5 Payment Service
+#### 4.3.5 Example Service 5
 **Responsibilities**:
-- Payment processing
-- Payment gateway integration
-- Payment history and reconciliation
+- Example processing functionality
+- External API integration
+- Example history and reconciliation
 
 **REST API Endpoints** (exposed via Apigee):
-- `POST /api/v1/payments` - Process payment
-- `GET /api/v1/payments/{id}` - Get payment status
-- `POST /api/v1/payments/{id}/refund` - Process refund
+- `POST /api/v1/examples` - Process example
+- `GET /api/v1/examples/{id}` - Get example status
+- `POST /api/v1/examples/{id}/reverse` - Reverse example
 
 **OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
-**Database**: `payments` schema in PostgreSQL
-- Tables: `payments`, `payment_transactions`, `refunds`
+**Database**: `service5` schema in PostgreSQL
+- Tables: `examples`, `example_transactions`, `reversals`
 
 **Integrations**:
-- Integrates with external REST payment gateway
-- Called by Order Service
+- Integrates with external REST API (example)
+- Called by Example Service 1
 - Publishes business events (example)
 
 ---
 
-#### 4.3.6 Audit Service
+#### 4.3.6 Example Service 6 (Audit Service)
 **Responsibilities**:
-- GDPR compliance logging
+- Compliance logging
 - Security audit trails
 - Activity logging
 
 **REST API Endpoints** (exposed via Apigee - Internal only):
 - `POST /api/v1/audit/logs` - Create audit log
 - `GET /api/v1/audit/logs` - Query audit logs
-- `GET /api/v1/audit/gdpr/{customerId}` - GDPR audit trail
+- `GET /api/v1/audit/compliance/{userId}` - Compliance audit trail
 
 **OpenAPI Spec**: Available at `/v3/api-docs` endpoint (internal) and published to Apigee
 
-**Database**: `audit` schema in PostgreSQL
-- Tables: `audit_logs`, `gdpr_audit_trail`
+**Database**: `service6` schema in PostgreSQL
+- Tables: `audit_logs`, `compliance_audit_trail`
 
 **Integrations**:
 - Receives events from all services
