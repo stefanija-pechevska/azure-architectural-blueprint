@@ -77,13 +77,25 @@ This template provides a **production-ready cloud-native architecture** with the
 
 ## 📚 Documentation
 
+### Core Documentation
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Comprehensive technical architecture blueprint
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - Step-by-step implementation guide
+- **[OPERATIONS_GUIDE.md](./OPERATIONS_GUIDE.md)** - Day-to-day operations, runbooks, and maintenance procedures
+- **[TESTING_STRATEGY.md](./TESTING_STRATEGY.md)** - Comprehensive testing guidelines and strategies
+- **[GLOSSARY.md](./GLOSSARY.md)** - Technical terms, acronyms, and Azure service definitions
+
+### Infrastructure & Deployment
 - **[INFRASTRUCTURE_AS_CODE_COMPARISON.md](./INFRASTRUCTURE_AS_CODE_COMPARISON.md)** - Bicep vs Terraform vs ARM Templates comparison
+- **[INFRASTRUCTURE_DEPLOYMENT_GUIDE.md](./INFRASTRUCTURE_DEPLOYMENT_GUIDE.md)** - Infrastructure deployment guide with CI/CD examples and best practices
+- **[HELM_GUIDE.md](./HELM_GUIDE.md)** - Helm charts guide for Kubernetes deployments
+
+### Comparisons & Alternatives
 - **[API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARISON.md)** - Apigee vs Azure API Management comparison
 - **[SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANAGEMENT_COMPARISON.md)** - HashiCorp Vault vs Azure Key Vault comparison
-- **[HELM_GUIDE.md](./HELM_GUIDE.md)** - Helm charts guide for Kubernetes deployments
-- **[INFRASTRUCTURE_DEPLOYMENT_GUIDE.md](./INFRASTRUCTURE_DEPLOYMENT_GUIDE.md)** - Infrastructure deployment guide with CI/CD examples and best practices
+
+### Compliance & Validation
+- **[GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md)** - GDPR compliance implementation guide
+- **[DOCUMENTATION_VALIDATION_REPORT.md](./DOCUMENTATION_VALIDATION_REPORT.md)** - Documentation structure validation and recommendations
 
 ---
 

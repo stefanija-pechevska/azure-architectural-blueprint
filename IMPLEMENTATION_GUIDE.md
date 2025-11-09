@@ -28,6 +28,7 @@ This guide provides detailed steps to implement the cloud-native architecture te
 - [Quick Start Commands](#quick-start-commands)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
+- [Related Documents](#related-documents)
 
 ---
 
@@ -1920,13 +1921,28 @@ az aks update \
 
 ## Next Steps
 
-1. Review architecture and adjust as needed
-2. Set up development environment
-3. Start with one service (Order Service) as PoC
+1. Review [ARCHITECTURE.md](./ARCHITECTURE.md) for architecture details
+2. Set up development environment (see Phase 1)
+3. Start with one example service as PoC (see Phase 6)
 4. Gradually add other services
-5. Implement frontend incrementally
-6. Add monitoring and observability
-7. Conduct security review
-8. Performance testing
-9. Production deployment
+5. Implement frontend incrementally (see Phase 7)
+6. Set up monitoring and observability (see Phase 10 and [OPERATIONS_GUIDE.md](./OPERATIONS_GUIDE.md))
+7. Implement testing strategy (see Phase 12 and [TESTING_STRATEGY.md](./TESTING_STRATEGY.md))
+8. Conduct security review (see [ARCHITECTURE.md](./ARCHITECTURE.md) Section 5)
+9. Performance testing (see [TESTING_STRATEGY.md](./TESTING_STRATEGY.md) Section 6)
+10. Production deployment (see Phase 13)
+
+---
+
+## Related Documents
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Comprehensive architecture blueprint
+- [OPERATIONS_GUIDE.md](./OPERATIONS_GUIDE.md) - Operations procedures and runbooks
+- [TESTING_STRATEGY.md](./TESTING_STRATEGY.md) - Testing guidelines and strategies
+- [GLOSSARY.md](./GLOSSARY.md) - Technical terms and acronyms
+- [INFRASTRUCTURE_DEPLOYMENT_GUIDE.md](./INFRASTRUCTURE_DEPLOYMENT_GUIDE.md) - Infrastructure deployment guide
+- [HELM_GUIDE.md](./HELM_GUIDE.md) - Helm charts guide
+- [GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md) - GDPR compliance implementation
+- [API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARISON.md) - API Gateway comparison
+- [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANAGEMENT_COMPARISON.md) - Secrets management comparison
 
