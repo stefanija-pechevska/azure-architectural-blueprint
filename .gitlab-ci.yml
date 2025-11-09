@@ -1,7 +1,28 @@
+# GitLab CI/CD Pipeline for Azure Kubernetes Service
+# 
+# This pipeline uses Helm for Kubernetes deployments.
+# Helm charts are located in infrastructure/helm/<service-name>/
+# 
+# Pipeline Stages:
+# 1. Build - Compile backend services
+# 2. Test - Run unit tests
+# 3. Security Scan - Vulnerability scanning
+# 4. Validate Helm - Validate Helm charts
+# 5. Build Images - Build and push Docker images to ACR
+# 6. Deploy Dev - Deploy to dev environment using Helm
+# 7. Integration Tests - Run integration tests
+# 8. Deploy Staging - Deploy to staging using Helm
+# 9. E2E Tests - End-to-end tests
+# 10. Deploy Production - Manual deployment to production using Helm
+#
+# To deploy a different service, override SERVICE_NAME variable in the job or use CI/CD variables.
+# Example: Set CI/CD variable SERVICE_NAME=product-service to deploy product service
+
 stages:
   - build
   - test
   - security-scan
+  - validate-helm
   - build-images
   - deploy-dev
   - integration-tests
@@ -15,6 +36,9 @@ variables:
   AKS_CLUSTER_NAME: aks-csom-platform-prod
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
+  HELM_VERSION: "3.13.0"
+  # Service to deploy (can be overridden per job or via CI/CD variables)
+  SERVICE_NAME: "order-service"
 
 # Build stage for backend services
 build-backend:
@@ -57,6 +81,23 @@ security-scan:
     - merge_requests
     - main
 
+# Validate Helm charts
+# This job validates Helm charts before deployment
+validate-helm-charts:
+  stage: validate-helm
+  image: alpine/helm:latest
+  script:
+    - cd infrastructure/helm/$SERVICE_NAME
+    - echo "Validating Helm chart for $SERVICE_NAME"
+    - helm lint .
+    - helm template $SERVICE_NAME . --values values-dev.yaml --debug > /dev/null
+    - echo "Helm chart validation passed"
+  allow_failure: false
+  only:
+    - merge_requests
+    - main
+    - develop
+
 # Build Docker images
 build-docker-images:
   stage: build-images
@@ -66,25 +107,35 @@ build-docker-images:
   before_script:
     - docker login $ACR_NAME.azurecr.io -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET
   script:
-    - cd backend/order-service
-    - docker build -t $ACR_NAME.azurecr.io/order-service:$CI_COMMIT_SHORT_SHA .
-    - docker build -t $ACR_NAME.azurecr.io/order-service:latest .
-    - docker push $ACR_NAME.azurecr.io/order-service:$CI_COMMIT_SHORT_SHA
-    - docker push $ACR_NAME.azurecr.io/order-service:latest
+    - cd backend/$SERVICE_NAME
+    - docker build -t $ACR_NAME.azurecr.io/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA .
+    - docker build -t $ACR_NAME.azurecr.io/$SERVICE_NAME:latest .
+    - docker push $ACR_NAME.azurecr.io/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA
+    - docker push $ACR_NAME.azurecr.io/$SERVICE_NAME:latest
   only:
     - main
     - develop
 
-# Deploy to Dev
+# Deploy to Dev using Helm
 deploy-dev:
   stage: deploy-dev
-  image: mcr.microsoft.com/azure-cli:latest
+  image: alpine/helm:latest
   before_script:
+    - apk add --no-cache curl azure-cli kubectl
     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
     - az aks get-credentials --resource-group $AKS_RESOURCE_GROUP --name $AKS_CLUSTER_NAME
+    - kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
   script:
-    - kubectl set image deployment/order-service order-service=$ACR_NAME.azurecr.io/order-service:$CI_COMMIT_SHORT_SHA -n dev
-    - kubectl rollout status deployment/order-service -n dev
+    - cd infrastructure/helm/$SERVICE_NAME
+    - |
+      helm upgrade --install $SERVICE_NAME . \
+        --namespace dev \
+        --values values-dev.yaml \
+        --set image.repository=$ACR_NAME.azurecr.io/$SERVICE_NAME \
+        --set image.tag=$CI_COMMIT_SHORT_SHA \
+        --wait \
+        --timeout 5m
+    - echo "Deployment successful. Release: $SERVICE_NAME in namespace: dev"
   environment:
     name: dev
     url: https://dev-api.example.com
@@ -104,16 +155,26 @@ integration-tests:
     - develop
     - main
 
-# Deploy to Staging
+# Deploy to Staging using Helm
 deploy-staging:
   stage: deploy-staging
-  image: mcr.microsoft.com/azure-cli:latest
+  image: alpine/helm:latest
   before_script:
+    - apk add --no-cache curl azure-cli kubectl
     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
     - az aks get-credentials --resource-group $AKS_RESOURCE_GROUP --name $AKS_CLUSTER_NAME
+    - kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
   script:
-    - kubectl set image deployment/order-service order-service=$ACR_NAME.azurecr.io/order-service:$CI_COMMIT_SHORT_SHA -n staging
-    - kubectl rollout status deployment/order-service -n staging
+    - cd infrastructure/helm/$SERVICE_NAME
+    - |
+      helm upgrade --install $SERVICE_NAME . \
+        --namespace staging \
+        --values values-staging.yaml \
+        --set image.repository=$ACR_NAME.azurecr.io/$SERVICE_NAME \
+        --set image.tag=$CI_COMMIT_SHORT_SHA \
+        --wait \
+        --timeout 5m
+    - echo "Deployment successful. Release: $SERVICE_NAME in namespace: staging"
   environment:
     name: staging
     url: https://staging-api.example.com
@@ -133,20 +194,34 @@ e2e-tests:
   only:
     - main
 
-# Deploy to Production (with manual approval)
+# Deploy to Production using Helm (with manual approval)
 deploy-production:
   stage: deploy-production
-  image: mcr.microsoft.com/azure-cli:latest
+  image: alpine/helm:latest
   before_script:
+    - apk add --no-cache curl azure-cli kubectl
     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
     - az aks get-credentials --resource-group $AKS_RESOURCE_GROUP --name $AKS_CLUSTER_NAME
+    - kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
   script:
-    - kubectl set image deployment/order-service order-service=$ACR_NAME.azurecr.io/order-service:$CI_COMMIT_SHORT_SHA -n production
-    - kubectl rollout status deployment/order-service -n production
+    - cd infrastructure/helm/$SERVICE_NAME
+    - |
+      # Use tag or commit SHA for production
+      IMAGE_TAG=${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}
+      helm upgrade --install $SERVICE_NAME . \
+        --namespace production \
+        --values values-prod.yaml \
+        --set image.repository=$ACR_NAME.azurecr.io/$SERVICE_NAME \
+        --set image.tag=$IMAGE_TAG \
+        --wait \
+        --timeout 10m
+    - echo "Deployment successful. Release: $SERVICE_NAME in namespace: production"
+    - echo "Image tag: ${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
   environment:
     name: production
     url: https://api.example.com
   when: manual
   only:
     - main
+    - tags
 

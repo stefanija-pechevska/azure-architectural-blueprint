@@ -313,34 +313,54 @@ helm upgrade order-service . \
 
 ## 9. CI/CD Integration
 
-### GitLab CI/CD Pipeline Example
+### GitLab CI/CD Pipeline Integration
 
-Add Helm deployment to your `.gitlab-ci.yml`:
+Helm is fully integrated into the GitLab CI/CD pipeline. See `.gitlab-ci.yml` for the complete implementation.
+
+**Key Features**:
+- **Helm Chart Validation**: Validates Helm charts before deployment
+- **Environment-Specific Deployments**: Uses different values files for dev, staging, and production
+- **Automatic Namespace Creation**: Creates namespaces if they don't exist
+- **Image Tag Management**: Uses commit SHA or Git tags for image versions
+- **Manual Approval**: Production deployments require manual approval
+
+**Pipeline Stages**:
+1. **validate-helm**: Validates Helm charts using `helm lint` and `helm template`
+2. **deploy-dev**: Deploys to dev environment using `values-dev.yaml`
+3. **deploy-staging**: Deploys to staging environment using `values-staging.yaml`
+4. **deploy-production**: Deploys to production using `values-prod.yaml` (manual approval)
+
+**Example Deployment Job** (from `.gitlab-ci.yml`):
 
 ```yaml
-deploy:production:
-  stage: deploy
+deploy-production:
+  stage: deploy-production
   image: alpine/helm:latest
   before_script:
-    - apk add --no-cache curl
-    - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    - chmod +x kubectl
-    - mv kubectl /usr/local/bin/
+    - apk add --no-cache curl azure-cli kubectl
     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-    - az aks get-credentials --resource-group rg-csom-platform-prod --name aks-csom-platform-prod
+    - az aks get-credentials --resource-group $AKS_RESOURCE_GROUP --name $AKS_CLUSTER_NAME
+    - kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
   script:
-    - cd infrastructure/helm/order-service
-    - helm upgrade --install order-service . \
+    - cd infrastructure/helm/$SERVICE_NAME
+    - |
+      IMAGE_TAG=${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}
+      helm upgrade --install $SERVICE_NAME . \
         --namespace production \
         --values values-prod.yaml \
-        --set image.tag=$CI_COMMIT_TAG \
+        --set image.repository=$ACR_NAME.azurecr.io/$SERVICE_NAME \
+        --set image.tag=$IMAGE_TAG \
         --wait \
-        --timeout 5m
+        --timeout 10m
+  when: manual
   only:
+    - main
     - tags
-  environment:
-    name: production
 ```
+
+**To Deploy a Different Service**:
+- Set the `SERVICE_NAME` CI/CD variable in GitLab (e.g., `product-service`, `customer-service`)
+- Or override it in the job definition
 
 ### Automated Deployment Workflow
 

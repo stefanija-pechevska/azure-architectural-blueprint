@@ -341,16 +341,19 @@ azure-architectural-blueprint/
 
 ## 🔄 CI/CD Pipeline
 
-The GitLab CI/CD pipeline includes:
+The GitLab CI/CD pipeline uses **Helm** for Kubernetes deployments and includes:
 
 1. **Build** - Compile and test code
 2. **Security Scan** - Vulnerability scanning
-3. **Build Images** - Docker image creation and push to ACR
-4. **Deploy Dev** - Automatic deployment to dev environment
-5. **Integration Tests** - Service integration testing
-6. **Deploy Staging** - Deployment to staging
-7. **E2E Tests** - End-to-end testing
-8. **Deploy Production** - Manual approval for production
+3. **Validate Helm** - Validate Helm charts before deployment
+4. **Build Images** - Docker image creation and push to ACR
+5. **Deploy Dev** - Automatic deployment to dev environment using Helm
+6. **Integration Tests** - Service integration testing
+7. **Deploy Staging** - Deployment to staging using Helm
+8. **E2E Tests** - End-to-end testing
+9. **Deploy Production** - Manual approval for production deployment using Helm
+
+**Helm Integration**: All Kubernetes deployments use Helm charts located in `infrastructure/helm/`. The pipeline validates charts, uses environment-specific values files, and supports easy rollbacks. See [HELM_GUIDE.md](./HELM_GUIDE.md) for details.
 
 ---
 
