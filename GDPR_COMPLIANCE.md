@@ -21,13 +21,13 @@
 
 ## Overview
 
-This document outlines the GDPR compliance measures implemented in the Customer Service & Order Management Platform.
+This document outlines the GDPR compliance measures implemented in the cloud-native architecture template.
 
 ## GDPR Principles
 
 ### 1. Right to Access (Article 15)
 
-**Implementation**: Data export endpoint in Customer Service
+**Implementation**: Data export endpoint in Example Service 3 (User Management Service)
 
 **Endpoint**: `POST /api/v1/customers/{id}/gdpr/export`
 
@@ -86,7 +86,7 @@ public void deleteCustomerData(UUID customerId, String userId) {
 
 ### 3. Right to Rectification (Article 16)
 
-**Implementation**: Update endpoints in Customer Service
+**Implementation**: Update endpoints in Example Service 3 (User Management Service)
 
 **Endpoint**: `PUT /api/v1/customers/{id}`
 
