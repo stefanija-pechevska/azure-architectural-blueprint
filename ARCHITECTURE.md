@@ -605,7 +605,9 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ---
 
-This diagram illustrates all Azure services used in the platform and their relationships:
+### 2.1 Azure Services Architecture Diagram
+
+This diagram illustrates all Azure services used in the template and their relationships:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
