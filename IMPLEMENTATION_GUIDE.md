@@ -1,7 +1,7 @@
 # Step-by-Step Implementation Guide
-## Customer Service & Order Management Platform
+## Cloud-Native Architecture Template
 
-This guide provides detailed steps to implement the PoC system from scratch.
+This guide provides detailed steps to implement the cloud-native architecture template from scratch. This template serves as a ready-to-use foundation for bootstrapping cloud-native applications on Azure.
 
 ---
 
@@ -794,31 +794,45 @@ In GitLab → Settings → CI/CD → Variables, add:
 
 ## Phase 6: Backend Services Development
 
-### Step 6.1: Create Order Service
+### Step 6.1: Create Example Service
 
 1. **Initialize Spring Boot Project**
    ```bash
-   cd backend/order-service
+   cd backend/example-service
    # Use Spring Initializr or create manually
+   # See example-service/ for reference implementation
    ```
 
-2. **Add Dependencies** (see `backend/order-service/pom.xml`)
+2. **Add Dependencies** (see `backend/example-service/pom.xml`)
+   - Spring Boot Starter Web
+   - Spring Boot Starter Data JPA
+   - Spring Boot Starter Security
+   - PostgreSQL Driver
+   - Azure Service Bus
+   - Redis Cache
+   - Application Insights
 
-3. **Implement Service** (see code examples in `backend/order-service/`)
+3. **Implement Service** (see code examples in `backend/example-service/`)
+   - REST API controllers
+   - Service layer with business logic
+   - Repository layer for data access
+   - Configuration for Azure services
+   - Security configuration
 
 4. **Build and Push Docker Image**
    ```bash
-   docker build -t acrcsomplatform.azurecr.io/order-service:latest .
-   docker push acrcsomplatform.azurecr.io/order-service:latest
+   # Replace with your ACR name
+   docker build -t your-acr.azurecr.io/example-service:latest .
+   docker push your-acr.azurecr.io/example-service:latest
    ```
 
 5. **Deploy to AKS using Helm** (Recommended)
    ```bash
    # Navigate to Helm chart directory
-   cd infrastructure/helm/order-service
+   cd infrastructure/helm/example-service
    
    # Install/upgrade using Helm
-   helm upgrade --install order-service . \
+   helm upgrade --install example-service . \
      --namespace production \
      --values values-prod.yaml \
      --set image.tag=latest \
@@ -828,18 +842,18 @@ In GitLab → Settings → CI/CD → Variables, add:
    
    **Alternative: Deploy using kubectl** (for testing)
    ```bash
-   kubectl apply -f infrastructure/kubernetes/order-service/
+   kubectl apply -f infrastructure/kubernetes/example-service/
    ```
    
    For detailed Helm usage, see [HELM_GUIDE.md](./HELM_GUIDE.md).
 
-### Step 6.2: Repeat for Other Services
+### Step 6.2: Create Additional Services
 
-- Product Service
-- Customer Service
-- Notification Service
-- Payment Service
-- Audit Service
+Repeat the process for additional services:
+- Create new service directories following the example-service structure
+- Update Helm charts for each service
+- Configure service-to-service communication
+- Set up monitoring and observability
 
 ---
 
