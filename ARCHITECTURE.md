@@ -1,9 +1,9 @@
-# Technical Architecture Blueprint
-## Customer Service & Order Management Platform
+# Cloud-Native Architecture Blueprint
+## Azure Architecture Template
 
 ### Executive Summary
 
-This document outlines the technical architecture for a cloud-native, microservices-based Customer Service & Order Management Platform deployed on Microsoft Azure. The system supports both internal employees and external clients with separate authentication mechanisms, integrates with legacy systems, and ensures GDPR compliance.
+This document outlines a production-ready, cloud-native microservices architecture template deployed on Microsoft Azure. This template provides a comprehensive foundation for building scalable, secure, and maintainable cloud-native applications with examples for each Azure service and component.
 
 ---
 
@@ -51,24 +51,24 @@ This document outlines the technical architecture for a cloud-native, microservi
 
 ## 1. System Overview
 
-### 1.1 Business Domain
-**Customer Service & Order Management Platform**
-- **Internal Users (Employees)**: Customer service representatives, order managers, administrators
-- **External Users (Clients)**: Direct clients placing orders, tracking shipments, managing accounts
-- **Core Functionality**: Order processing, customer management, product catalog, notifications, reporting
+### 1.1 Architecture Purpose
+**Cloud-Native Application Template**
+- **Purpose**: Ready-to-use architecture template for bootstrapping cloud-native applications on Azure
+- **Target Users**: Development teams building cloud-native applications
+- **Use Cases**: Microservices applications, web applications, API platforms, enterprise applications
 
-### 1.2 Key Requirements
-- React-based web application with microfrontends architecture
+### 1.2 Key Features
+- React-based web application with microfrontends architecture (Module Federation)
 - Spring Boot/Java REST microservices deployed on Azure Kubernetes Service (AKS)
-- PostgreSQL database for persistent storage
-- Entra ID JWT authentication for employees
-- Entra External ID for client authentication
-- Apigee API Management for API governance
-- Integration with legacy SOAP services (ERP system)
-- Integration with external REST services (payment gateway, shipping)
-- GDPR compliance for data protection
-- Real-time notifications between internal and external applications
+- PostgreSQL database for persistent storage (Azure Database for PostgreSQL)
+- Entra ID authentication (internal and external users)
+- API Management (Apigee or Azure API Management) for API governance
+- Integration examples for legacy SOAP services
+- Integration examples for external REST services
+- Data protection and compliance capabilities
+- Real-time notifications and event-driven architecture
 - GitLab CI/CD for automated deployments
+- Comprehensive examples for each Azure service and component
 
 ---
 
@@ -459,33 +459,33 @@ This section defines the non-functional requirements (NFRs) that the system must
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│  EXTERNAL USERS (Clients)                    │              INTERNAL USERS (Employees)        │
-│  Entra External ID Authentication            │              Entra ID Authentication          │
-└──────────────────┬───────────────────────────┴──────────────────────┬───────────────────────┘
-                   │                                                  │
-┌──────────────────▼───────────────────────────┐  ┌───────────────────▼───────────────────────┐
-│  EXTERNAL REACT WEB APPLICATION             │  │  INTERNAL REACT WEB APPLICATION            │
-│  (Microfrontends)                            │  │  (Microfrontends)                           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐ │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐│
-│  │  Orders  │  │ Products │  │ Account  │ │  │  │  Admin   │  │  Orders  │  │Customers ││
-│  │   MFE    │  │   MFE    │  │   MFE    │ │  │  │Dashboard │  │Management│  │Management││
-│  └──────────┘  └──────────┘  └──────────┘ │  │  │   MFE    │  │   MFE    │  │   MFE    ││
-│  ┌──────────┐                               │  │  └──────────┘  └──────────┘  └──────────┘│
-│  │Notifications│                              │  │  ┌──────────┐                            │
-│  │    MFE     │                              │  │  │Analytics │                            │
-│  └──────────┘                               │  │  │  MFE     │                            │
-└──────────────────┬──────────────────────────┘  └──┴──────────┴────────────────────────────┘
-                    │                                                  │
-┌───────────────────▼──────────────────────────┐  ┌───────────────────▼───────────────────────┐
-│  APIGEE API GATEWAY                          │  │  APIGEE API GATEWAY                      │
-│  (External Proxy)                             │  │  (Internal Proxy)                        │
-│  ┌────────────────────────────────────────┐ │  │  ┌────────────────────────────────────┐ │
-│  │ • Entra External ID JWT Validation     │ │  │  │ • Entra ID JWT Validation           │ │
-│  │ • Rate Limiting (1000 req/min)         │ │  │  │ • Rate Limiting (5000 req/min)     │ │
-│  │ • CORS Policies                        │ │  │  │ • IP Whitelisting                   │ │
-│  │ • Request/Response Transform            │ │  │  │ • Request/Response Transform        │ │
-│  │ • API Versioning & Analytics           │ │  │  │ • API Versioning & Analytics       │ │
-│  └────────────────────────────────────────┘ │  │  └────────────────────────────────────┘ │
+│  EXTERNAL USERS                           │              INTERNAL USERS                      │
+│  Entra External ID Authentication         │              Entra ID Authentication             │
+└──────────────────┬────────────────────────┴──────────────────────┬──────────────────────────┘
+                   │                                               │
+┌──────────────────▼────────────────────────┐  ┌───────────────────▼──────────────────────────┐
+│  EXTERNAL REACT WEB APPLICATION          │  │  INTERNAL REACT WEB APPLICATION               │
+│  (Microfrontends)                        │  │  (Microfrontends)                              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │   MFE 1  │  │   MFE 2  │  │   MFE 3  ││  │  │   MFE 1  │  │   MFE 2  │  │   MFE 3  │   │
+│  │ (Public) │  │ (Public) │  │ (Public) ││  │  │ (Admin)  │  │ (Admin)  │  │ (Admin)  │   │
+│  └──────────┘  └──────────┘  └──────────┘│  │  └──────────┘  └──────────┘  └──────────┘   │
+│  ┌──────────┐                            │  │  ┌──────────┐                                │
+│  │   MFE 4  │                            │  │  │   MFE 4  │                                │
+│  │(Notifications)                        │  │  │(Analytics)                                │
+│  └──────────┘                            │  │  └──────────┘                                │
+└──────────────────┬────────────────────────┘  └──┴──────────────────────────────────────────┘
+                   │                                               │
+┌───────────────────▼──────────────────────────┐  ┌───────────────────▼──────────────────────────┐
+│  API GATEWAY (External)                     │  │  API GATEWAY (Internal)                      │
+│  Apigee / Azure API Management              │  │  Apigee / Azure API Management               │
+│  ┌────────────────────────────────────────┐ │  │  ┌────────────────────────────────────┐     │
+│  │ • Entra External ID JWT Validation     │ │  │  │ • Entra ID JWT Validation           │     │
+│  │ • Rate Limiting                        │ │  │  │ • Rate Limiting                     │     │
+│  │ • CORS Policies                        │ │  │  │ • IP Whitelisting                   │     │
+│  │ • Request/Response Transform            │ │  │  │ • Request/Response Transform        │     │
+│  │ • API Versioning & Analytics           │ │  │  │ • API Versioning & Analytics       │     │
+│  └────────────────────────────────────────┘ │  │  └────────────────────────────────────┘     │
 └───────────────────┬──────────────────────────┘  └───┬────────────────────────────────────────────┘
                     │                                  │
                     └──────────────┬───────────────────┘
@@ -493,13 +493,13 @@ This section defines the non-functional requirements (NFRs) that the system must
                     ┌──────────────▼───────────────────┐
                     │  AZURE KUBERNETES SERVICE (AKS) │
                     │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-                    │  │   Order      │  │   Product    │  │   Customer   │ │
-                    │  │  Service     │  │   Service    │  │   Service    │ │
+                    │  │  Service 1   │  │  Service 2   │  │  Service 3   │ │
+                    │  │(Example)     │  │(Example)     │  │(Example)     │ │
                     │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
                     │         │                 │                 │         │
                     │  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐ │
-                    │  │ Notification│  │   Payment    │  │   Audit      │ │
-                    │  │   Service   │  │   Service    │  │   Service    │ │
+                    │  │  Service 4   │  │  Service 5   │  │  Service 6   │ │
+                    │  │(Example)     │  │(Example)     │  │(Example)     │ │
                     │  └─────────────┘  └──────┬───────┘  └───────────────┘ │
                     │                          │                           │
                     │  ┌───────────────────────▼────────────────────────┐ │
@@ -520,8 +520,8 @@ This section defines the non-functional requirements (NFRs) that the system must
                     ┌──────────────────────────┼──────────────────────────┐
                     │                          │                          │
         ┌───────────▼────────┐   ┌──────────────▼──────────┐   ┌──────────▼────────┐
-        │  Legacy SOAP        │   │  Payment Gateway        │   │  Shipping Service │
-        │  ERP Service         │   │  (REST API)             │   │  (REST API)       │
+        │  Legacy SOAP        │   │  External API 1         │   │  External API 2   │
+        │  Service            │   │  (REST API)             │   │  (REST API)       │
         └─────────────────────┘   └──────────────────────────┘   └───────────────────┘
 ```
 
@@ -1238,7 +1238,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 ### 4.7 Integration Layer
 
 #### 4.7.1 Legacy SOAP Service Integration
-**Service**: Product Service → Legacy ERP System
+**Service**: Example Service → Legacy SOAP System
 
 **Implementation**:
 - Spring WS (Web Services) for SOAP client
@@ -1254,14 +1254,17 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 #### 4.7.2 External REST Service Integration
 **Services**:
-1. **Payment Gateway** (Payment Service)
+1. **External API 1** (Example Service)
    - RESTful API integration
    - OAuth 2.0 authentication
    - Idempotency handling
+   - Example: Payment gateway, shipping service, or third-party API
 
-2. **Shipping Service** (Order Service)
-   - RESTful API for shipping rates
-   - Tracking information retrieval
+2. **External API 2** (Example Service)
+   - RESTful API integration
+   - Authentication as required
+   - Error handling and retries
+   - Example: External service integration
 
 ---
 

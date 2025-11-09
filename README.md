@@ -1,26 +1,25 @@
-# Azure Architectural Blueprint
-## Customer Service & Order Management Platform
+# Azure Cloud-Native Architecture Template
 
-A comprehensive Proof of Concept (PoC) system demonstrating a modern, cloud-native microservices architecture on Microsoft Azure with React microfrontends, Spring Boot services, and full CI/CD automation.
+A ready-to-use architecture template for bootstrapping cloud-native applications on Microsoft Azure. This template provides a comprehensive foundation with React microfrontends, Spring Boot microservices, and full CI/CD automation, complete with examples for each Azure service and component.
 
 ---
 
 ## 📋 Overview
 
-This PoC implements a **Customer Service & Order Management Platform** with the following key features:
+This template provides a **production-ready cloud-native architecture** with the following components:
 
-- **React-based web application** with microfrontends architecture
+- **React-based web application** with microfrontends architecture (Module Federation)
 - **Spring Boot/Java REST microservices** deployed on Azure Kubernetes Service (AKS)
-- **PostgreSQL database** for persistent storage
+- **PostgreSQL database** for persistent storage (Azure Database for PostgreSQL)
 - **Azure Blob Storage** for file archiving and long-term storage
-- **Entra ID JWT authentication** for employees
-- **Entra External ID** for client authentication
-- **Apigee API Management** or **Azure API Management** for API governance
-- **Integration with legacy SOAP services** (ERP system)
-- **Integration with external REST services** (payment gateway, shipping)
-- **GDPR compliance** with data export, deletion, and audit capabilities
-- **Real-time notifications** between internal and external applications
-- **GitLab CI/CD** for automated deployments on Azure
+- **Entra ID** for authentication (internal and external users)
+- **API Management** (Apigee or Azure API Management) for API governance
+- **Service Bus** for asynchronous messaging
+- **Redis Cache** for caching and session management
+- **Azure Functions** for serverless workloads
+- **Key Vault** for secrets management
+- **Application Insights** for monitoring and observability
+- **GitLab CI/CD** for automated deployments
 
 ---
 
@@ -31,54 +30,48 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 ```
 ┌─────────────────┐
 │  React Shell    │  (Microfrontends Host)
-│  + 5 MFE Apps   │
+│  + MFE Apps     │
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│  Apigee Gateway │  (API Management)
+│  API Gateway    │  (Apigee / Azure API Management)
 └────────┬────────┘
          │
 ┌────────▼────────┐
 │  AKS Cluster    │  (Kubernetes)
 │  ┌──────────┐   │
-│  │ Order    │   │  Spring Boot Services
-│  │ Product  │   │
-│  │ Customer │   │
-│  │ Payment  │   │
-│  │ Notify   │   │
-│  │ Audit    │   │
+│  │ Service 1│   │  Spring Boot Microservices
+│  │ Service 2│   │
+│  │ Service N│   │
 │  └──────────┘   │
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│  PostgreSQL     │  (Azure Flexible Server)
+│  PostgreSQL     │  (Azure Database for PostgreSQL)
 └─────────────────┘
 
 ┌─────────────────┐
-│  Azure Blob     │  (Archiving & Storage)
-│  Storage        │
-│  • Archive      │
-│  • Audit Logs   │
-│  • GDPR Data    │
+│  Azure Services │
+│  • Blob Storage │  (Archiving & Storage)
+│  • Service Bus  │  (Messaging)
+│  • Redis Cache  │  (Caching)
+│  • Key Vault    │  (Secrets)
+│  • Functions    │  (Serverless)
 └─────────────────┘
 ```
 
-### Key Services
+### Key Components
 
-1. **Order Service** - Order creation, tracking, and management
-2. **Product Service** - Product catalog and inventory (integrates with legacy SOAP ERP)
-3. **Customer Service** - Customer profiles and GDPR compliance
-4. **Payment Service** - Payment processing (integrates with REST payment gateway)
-5. **Notification Service** - Real-time notifications via WebSocket/SSE
-6. **Audit Service** - GDPR audit trails and security logging
-
-### Frontend Microfrontends
-
-1. **Orders MFE** - Order placement and tracking
-2. **Products MFE** - Product catalog and search
-3. **Account MFE** - User profile and GDPR data management
-4. **Notifications MFE** - Real-time notification center
-5. **Admin Dashboard MFE** - Internal employee dashboard
+1. **Microservices** - Spring Boot services deployed on AKS
+2. **Frontend** - React application with microfrontends architecture
+3. **API Gateway** - API management and governance
+4. **Database** - PostgreSQL for persistent storage
+5. **Storage** - Azure Blob Storage for files and archiving
+6. **Messaging** - Azure Service Bus for asynchronous communication
+7. **Caching** - Redis Cache for performance optimization
+8. **Secrets** - Azure Key Vault or HashiCorp Vault
+9. **Monitoring** - Application Insights and Azure Monitor
+10. **CI/CD** - GitLab CI/CD for automated deployments
 
 ---
 
@@ -86,7 +79,6 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Comprehensive technical architecture blueprint
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - Step-by-step implementation guide
-- **[GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md)** - GDPR compliance implementation details
 - **[INFRASTRUCTURE_AS_CODE_COMPARISON.md](./INFRASTRUCTURE_AS_CODE_COMPARISON.md)** - Bicep vs Terraform vs ARM Templates comparison
 - **[API_GATEWAY_COMPARISON.md](./API_GATEWAY_COMPARISON.md)** - Apigee vs Azure API Management comparison
 - **[SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANAGEMENT_COMPARISON.md)** - HashiCorp Vault vs Azure Key Vault comparison
@@ -104,11 +96,11 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - Docker installed
 - kubectl installed
 - **Helm 3.x** (for Kubernetes deployments)
-- Maven 3.9+ and Java 17+
-- Node.js 20+ and npm
+- Maven 3.9+ and Java 17+ (for backend services)
+- Node.js 20+ and npm (for frontend)
 - GitLab account (or GitLab CI/CD runner)
 - **Terraform >= 1.5.0** (optional, for Terraform deployment)
-- **Azure CLI** (for ARM templates and Bicep)
+- **Bicep CLI** (optional, for Bicep deployment)
 
 ### 1. Clone Repository
 
@@ -117,7 +109,22 @@ git clone <repository-url>
 cd azure-architectural-blueprint
 ```
 
-### 2. Set Up Azure Resources
+### 2. Configure Variables
+
+Update the following files with your values:
+
+- `infrastructure/terraform/terraform.tfvars.example` (copy to `terraform.tfvars`)
+- `infrastructure/bicep/main.bicep` (update parameters)
+- `infrastructure/arm/azuredeploy.parameters.json` (update parameters)
+
+**Important**: Replace placeholder values like:
+- Resource group names (`rg-your-project-name`)
+- Storage account names (`styourprojectname`)
+- Key Vault names (`kv-your-project-name`)
+- AKS cluster names (`aks-your-project-name`)
+- PostgreSQL server names (`psql-your-project-name`)
+
+### 3. Set Up Azure Resources
 
 #### Option A: Using ARM Templates (Azure Native JSON)
 
@@ -126,11 +133,11 @@ cd azure-architectural-blueprint
 az login
 
 # Create resource group
-az group create --name rg-csom-platform-prod --location westeurope
+az group create --name rg-your-project-name --location westeurope
 
 # Deploy infrastructure using ARM templates
 az deployment group create \
-  --resource-group rg-csom-platform-prod \
+  --resource-group rg-your-project-name \
   --template-file infrastructure/arm/azuredeploy.json \
   --parameters @infrastructure/arm/azuredeploy.parameters.json
 ```
@@ -145,7 +152,7 @@ az login
 
 # Deploy infrastructure using Bicep
 az deployment group create \
-  --resource-group rg-csom-platform-prod \
+  --resource-group rg-your-project-name \
   --template-file infrastructure/bicep/main.bicep \
   --parameters postgresAdminPassword='YourSecurePassword123!'
 ```
@@ -175,20 +182,22 @@ terraform apply
 
 See [infrastructure/terraform/README.md](./infrastructure/terraform/README.md) for detailed Terraform setup instructions.
 
-### 3. Configure Entra ID
+**For comprehensive infrastructure deployment examples, CI/CD integration, and best practices, see [INFRASTRUCTURE_DEPLOYMENT_GUIDE.md](./INFRASTRUCTURE_DEPLOYMENT_GUIDE.md).**
 
-1. **Create App Registration for Internal Users (Employees)**
+### 4. Configure Entra ID
+
+1. **Create App Registration for Internal Users**
    - Navigate to Azure Portal → Azure Active Directory → App registrations
-   - Create new registration: `csom-platform-internal`
+   - Create new registration
    - Note: Client ID and Tenant ID
 
-2. **Configure Entra External ID for External Users (Clients)**
+2. **Configure Entra External ID for External Users** (optional)
    - Navigate to Azure Portal → Azure AD External Identities
    - Create user flow for sign-up/sign-in
-   - Create app registration: `csom-platform-external`
+   - Create app registration
    - Note: Client ID and Tenant ID
 
-### 4. Set Up GitLab CI/CD Variables
+### 5. Set Up GitLab CI/CD Variables
 
 In GitLab → Settings → CI/CD → Variables, add:
 
@@ -196,28 +205,30 @@ In GitLab → Settings → CI/CD → Variables, add:
 - `AZURE_CLIENT_ID` (service principal)
 - `AZURE_CLIENT_SECRET` (service principal)
 - `AZURE_TENANT_ID`
-- `ACR_NAME`: `acrcsomplatform`
-- `AKS_RESOURCE_GROUP`: `rg-csom-platform-prod`
-- `AKS_CLUSTER_NAME`: `aks-csom-platform-prod`
-- `POSTGRES_HOST`: `psql-csom-platform-prod.postgres.database.azure.com`
-- `ENTRA_INTERNAL_CLIENT_ID`
-- `ENTRA_EXTERNAL_CLIENT_ID`
-- `ENTRA_INTERNAL_TENANT_ID`
-- `ENTRA_EXTERNAL_TENANT_ID`
+- `ACR_NAME`: Your Azure Container Registry name
+- `AKS_RESOURCE_GROUP`: Your resource group name
+- `AKS_CLUSTER_NAME`: Your AKS cluster name
+- `POSTGRES_HOST`: Your PostgreSQL server host
+- `ENTRA_INTERNAL_CLIENT_ID` (if using internal authentication)
+- `ENTRA_EXTERNAL_CLIENT_ID` (if using external authentication)
 
-### 5. Build and Deploy Services
+### 6. Build and Deploy Services
 
 #### Backend Services
 
 ```bash
-# Build Order Service
-cd backend/order-service
+# Build example service
+cd backend/example-service
 mvn clean package
-docker build -t acrcsomplatform.azurecr.io/order-service:latest .
-docker push acrcsomplatform.azurecr.io/order-service:latest
+docker build -t your-acr.azurecr.io/example-service:latest .
+docker push your-acr.azurecr.io/example-service:latest
 
-# Deploy to AKS
-kubectl apply -f infrastructure/kubernetes/order-service/
+# Deploy to AKS using Helm
+cd infrastructure/helm/example-service
+helm upgrade --install example-service . \
+  --namespace production \
+  --values values-prod.yaml \
+  --set image.tag=latest
 ```
 
 #### Frontend
@@ -230,16 +241,16 @@ npm run build
 
 # Deploy to Azure Static Web Apps
 az staticwebapp create \
-  --name csom-platform-frontend \
-  --resource-group rg-csom-platform-prod
+  --name your-project-frontend \
+  --resource-group rg-your-project-name
 ```
 
-### 6. Configure Apigee API Proxies
+### 7. Configure API Management
 
-1. Import API proxies from `apigee/proxies/`
+1. Import API definitions from `azure-api-management/apis/`
 2. Configure JWT validation policies
 3. Set up rate limiting
-4. Deploy proxies
+4. Deploy APIs
 
 ---
 
@@ -253,8 +264,8 @@ docker run --name postgres-local \
   -e POSTGRES_PASSWORD=postgres \
   -p 5432:5432 -d postgres:15
 
-# Run Order Service locally
-cd backend/order-service
+# Run example service locally
+cd backend/example-service
 mvn spring-boot:run
 
 # Run Frontend locally
@@ -268,8 +279,8 @@ npm run dev
 # Get authentication token (example)
 TOKEN=$(az account get-access-token --resource api://your-client-id --query accessToken -o tsv)
 
-# Test Order Service
-curl -X GET https://api.example.com/api/v1/orders \
+# Test API
+curl -X GET https://api.example.com/api/v1/example \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -281,17 +292,9 @@ curl -X GET https://api.example.com/api/v1/orders \
 azure-architectural-blueprint/
 ├── frontend/
 │   ├── shell/                 # React shell application
-│   ├── orders-mfe/            # Orders microfrontend
-│   ├── products-mfe/          # Products microfrontend
-│   ├── account-mfe/           # Account microfrontend
-│   └── notifications-mfe/     # Notifications microfrontend
+│   └── example-mfe/           # Example microfrontend
 ├── backend/
-│   ├── order-service/         # Order management service
-│   ├── product-service/       # Product catalog service
-│   ├── customer-service/      # Customer & GDPR service
-│   ├── payment-service/       # Payment processing service
-│   ├── notification-service/  # Notification service
-│   └── audit-service/         # Audit & logging service
+│   └── example-service/       # Example Spring Boot microservice
 ├── infrastructure/
 │   ├── arm/                   # ARM templates (JSON)
 │   ├── bicep/                 # Azure Bicep templates
@@ -299,20 +302,21 @@ azure-architectural-blueprint/
 │   ├── kubernetes/            # Kubernetes manifests
 │   ├── helm/                  # Helm charts for microservices
 │   └── database/              # Database migrations
-├── apigee/
-│   └── proxies/               # Apigee API proxy configs
 ├── azure-api-management/      # Azure API Management configs
 │   ├── apis/                  # API definitions (OpenAPI)
 │   └── policies/              # API Management policies
 ├── hashicorp-vault/           # HashiCorp Vault configs
 │   ├── kubernetes/            # Vault deployment on AKS
 │   └── policies/              # Vault access policies
-├── API_GATEWAY_COMPARISON.md  # Apigee vs Azure API Management comparison
-├── SECRETS_MANAGEMENT_COMPARISON.md  # HashiCorp Vault vs Azure Key Vault comparison
-├── INFRASTRUCTURE_AS_CODE_COMPARISON.md  # Bicep vs Terraform comparison
+├── azure-functions/           # Azure Functions examples
+│   └── example-function/      # Example serverless function
 ├── ARCHITECTURE.md            # Architecture documentation
 ├── IMPLEMENTATION_GUIDE.md    # Implementation guide
-├── GDPR_COMPLIANCE.md         # GDPR compliance guide
+├── INFRASTRUCTURE_AS_CODE_COMPARISON.md  # IaC comparison
+├── API_GATEWAY_COMPARISON.md  # API Gateway comparison
+├── SECRETS_MANAGEMENT_COMPARISON.md  # Secrets management comparison
+├── HELM_GUIDE.md              # Helm guide
+├── INFRASTRUCTURE_DEPLOYMENT_GUIDE.md  # Infrastructure deployment guide
 ├── .gitlab-ci.yml             # GitLab CI/CD pipeline
 └── README.md                  # This file
 ```
@@ -321,11 +325,11 @@ azure-architectural-blueprint/
 
 ## 🔐 Security
 
-- **Authentication**: Entra ID (employees) and Entra External ID (clients)
+- **Authentication**: Entra ID (internal and external users)
 - **Authorization**: JWT-based with role-based access control (RBAC)
-- **API Security**: Apigee API Management with rate limiting and policies
+- **API Security**: API Management with rate limiting and policies
 - **Data Encryption**: Encryption at rest and in transit
-- **Secrets Management**: Azure Key Vault
+- **Secrets Management**: Azure Key Vault or HashiCorp Vault
 - **Network Security**: Private AKS cluster, network policies
 - **File Archiving**: Azure Blob Storage with lifecycle management
 
@@ -358,32 +362,17 @@ The GitLab CI/CD pipeline uses **Helm** for Kubernetes deployments and includes:
 
 ---
 
-## 🛡️ GDPR Compliance
-
-The platform implements comprehensive GDPR compliance:
-
-- ✅ **Right to Access**: Data export endpoints
-- ✅ **Right to Erasure**: Soft delete with audit trail
-- ✅ **Right to Rectification**: Data update capabilities
-- ✅ **Consent Management**: Consent tracking and withdrawal
-- ✅ **Data Minimization**: Only collect necessary data
-- ✅ **Breach Notification**: Automated alerting
-- ✅ **Privacy by Design**: Built into architecture
-
-See [GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md) for detailed implementation.
-
----
-
 ## 🔌 Integrations
 
-### Legacy SOAP Service
-- **Service**: Product Service → Legacy ERP System
-- **Technology**: Spring WS (Web Services)
-- **Use Case**: Inventory synchronization
+### Legacy SOAP Service Integration
+- Example: Integration with external SOAP-based services
+- Technology: Spring WS (Web Services)
+- Use Case: External system integration
 
 ### External REST Services
-- **Payment Gateway**: Payment processing
-- **Shipping Service**: Shipping rates and tracking
+- Example: Integration with external REST APIs
+- Technology: Spring RestTemplate or WebClient
+- Use Case: Third-party service integration
 
 ---
 
@@ -420,26 +409,30 @@ See [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) for detailed troublesho
 
 ---
 
-## 📝 Next Steps
+## 📝 Customization
 
-1. Review architecture and adjust as needed
-2. Set up development environment
-3. Start with one service (Order Service) as PoC
-4. Gradually add other services
-5. Implement frontend incrementally
-6. Add monitoring and observability
-7. Conduct security review
-8. Performance testing
-9. Production deployment
+This template is designed to be customized for your specific needs:
+
+1. **Update Resource Names**: Replace placeholder names with your project names
+2. **Configure Services**: Update service configurations in Helm charts
+3. **Add Microservices**: Add new services following the example service structure
+4. **Customize Frontend**: Modify the React application and microfrontends
+5. **Adjust Infrastructure**: Modify infrastructure templates for your requirements
+6. **Configure CI/CD**: Update GitLab CI/CD pipeline for your workflow
 
 ---
 
-## 📞 Support
+## 📖 Examples
 
-For questions or issues:
-- Review documentation in `ARCHITECTURE.md` and `IMPLEMENTATION_GUIDE.md`
-- Check GitLab issues
-- Contact the development team
+This template includes examples for:
+
+- **Azure Services**: AKS, PostgreSQL, Blob Storage, Service Bus, Redis Cache, Key Vault, Functions, Application Insights
+- **Infrastructure as Code**: Terraform, Bicep, ARM Templates
+- **Kubernetes**: Helm charts, deployments, services, ingress, HPA
+- **CI/CD**: GitLab CI/CD pipeline with Helm integration
+- **API Management**: Apigee and Azure API Management configurations
+- **Secrets Management**: Azure Key Vault and HashiCorp Vault examples
+- **Monitoring**: Application Insights and Azure Monitor setup
 
 ---
 
@@ -451,7 +444,7 @@ For questions or issues:
 
 ## 🙏 Acknowledgments
 
-This PoC demonstrates modern cloud-native architecture patterns using:
+This template demonstrates modern cloud-native architecture patterns using:
 - Microsoft Azure services
 - Spring Boot microservices
 - React microfrontends
