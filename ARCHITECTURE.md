@@ -2057,11 +2057,6 @@ This section outlines the deployment strategies used for safe, zero-downtime dep
 - [INFRASTRUCTURE_DEPLOYMENT_GUIDE.md](./INFRASTRUCTURE_DEPLOYMENT_GUIDE.md) - Infrastructure deployment guide
 - [HELM_GUIDE.md](./HELM_GUIDE.md) - Helm charts guide
 - [GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md) - GDPR compliance implementation
-
-1. Review and approve architecture
-2. Set up Azure subscription and resource groups
-3. Configure Entra ID and External ID tenants
-4. Set up GitLab repository and CI/CD pipelines
 5. Deploy infrastructure (AKS, PostgreSQL, etc.)
 6. Develop and deploy microservices
 7. Develop and deploy React microfrontends
