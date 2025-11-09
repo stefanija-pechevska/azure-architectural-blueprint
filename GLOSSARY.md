@@ -319,5 +319,5 @@ For more information about Azure services and technologies, see:
 
 ---
 
-**Last Updated**: November 9, 2024
+**Last Updated**: November 9, 2025
 

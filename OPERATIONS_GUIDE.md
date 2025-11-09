@@ -891,5 +891,5 @@ az monitor log-analytics query --workspace <workspace-id> --analytics-query "Con
 
 ---
 
-**Last Updated**: November 9, 2024
+**Last Updated**: November 9, 2025
 

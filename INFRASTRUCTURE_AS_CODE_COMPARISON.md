@@ -404,5 +404,5 @@ Choose based on your team's preferences, expertise, and requirements. Note that 
 
 ---
 
-**Last Updated**: January 2024
+**Last Updated**: November 9, 2025
 
