@@ -324,11 +324,16 @@ azure-architectural-blueprint/
 │   └── example-function/      # Example serverless function
 ├── ARCHITECTURE.md            # Architecture documentation
 ├── IMPLEMENTATION_GUIDE.md    # Implementation guide
+├── OPERATIONS_GUIDE.md        # Operations guide and runbooks
+├── TESTING_STRATEGY.md        # Testing strategy and guidelines
+├── GLOSSARY.md                # Technical terms and acronyms
 ├── INFRASTRUCTURE_AS_CODE_COMPARISON.md  # IaC comparison
 ├── API_GATEWAY_COMPARISON.md  # API Gateway comparison
 ├── SECRETS_MANAGEMENT_COMPARISON.md  # Secrets management comparison
 ├── HELM_GUIDE.md              # Helm guide
 ├── INFRASTRUCTURE_DEPLOYMENT_GUIDE.md  # Infrastructure deployment guide
+├── GDPR_COMPLIANCE.md         # GDPR compliance guide
+├── DOCUMENTATION_VALIDATION_REPORT.md  # Documentation validation report
 ├── .gitlab-ci.yml             # GitLab CI/CD pipeline
 └── README.md                  # This file
 ```
