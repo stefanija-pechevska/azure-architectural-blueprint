@@ -24,6 +24,7 @@ This guide provides detailed steps to implement the cloud-native architecture te
 - [Phase 12: Testing](#phase-12-testing)
 - [Phase 13: Production Deployment](#phase-13-production-deployment)
 - [Phase 14: Documentation](#phase-14-documentation)
+- [Deployment Authentication Options](#deployment-authentication-options)
 - [Quick Start Commands](#quick-start-commands)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
