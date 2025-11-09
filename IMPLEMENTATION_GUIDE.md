@@ -110,11 +110,59 @@ This guide provides detailed steps to implement the PoC system from scratch.
 
 Choose one of the following options for deploying infrastructure:
 
-#### Option A: Using Bicep (Azure Native)
+#### Option A: Using ARM Templates (Azure Native JSON)
+
+**Prerequisites:**
+- Azure CLI configured
+- Resource group created
+
+**Steps:**
+
+1. **Navigate to ARM templates directory**
+   ```bash
+   cd infrastructure/arm
+   ```
+
+2. **Edit parameters file**
+   ```bash
+   # Edit azuredeploy.parameters.json
+   # Update postgresAdminPassword and other parameter values
+   ```
+
+3. **Validate template**
+   ```bash
+   az deployment group validate \
+     --resource-group rg-csom-platform-prod \
+     --template-file azuredeploy.json \
+     --parameters @azuredeploy.parameters.json
+   ```
+
+4. **Deploy template**
+   ```bash
+   az deployment group create \
+     --resource-group rg-csom-platform-prod \
+     --template-file azuredeploy.json \
+     --parameters @azuredeploy.parameters.json \
+     --name csom-platform-deployment
+   ```
+
+5. **View outputs**
+   ```bash
+   az deployment group show \
+     --resource-group rg-csom-platform-prod \
+     --name csom-platform-deployment \
+     --query properties.outputs
+   ```
+
+For detailed ARM template setup instructions, see [infrastructure/arm/README.md](../infrastructure/arm/README.md).
+
+**Note:** After deploying with ARM templates, continue with the remaining phases (Database Setup, AKS Setup, etc.) as the infrastructure resources are now created.
+
+#### Option B: Using Bicep (Azure Native DSL)
 
 See Phase 1.4 and subsequent phases for Bicep-based deployment steps.
 
-#### Option B: Using Terraform (Multi-Cloud)
+#### Option C: Using Terraform (Multi-Cloud)
 
 **Prerequisites:**
 - Terraform >= 1.5.0 installed

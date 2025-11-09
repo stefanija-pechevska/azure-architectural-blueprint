@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceGroupName": {
+      "value": "rg-csom-platform-prod"
+    },
+    "location": {
+      "value": "westeurope"
+    },
+    "aksClusterName": {
+      "value": "aks-csom-platform-prod"
+    },
+    "postgresServerName": {
+      "value": "psql-csom-platform-prod"
+    },
+    "postgresAdminUsername": {
+      "value": "csomadmin"
+    },
+    "postgresAdminPassword": {
+      "value": "YourSecurePassword123!"
+    },
+    "acrName": {
+      "value": "acrcsomplatform"
+    },
+    "keyVaultName": {
+      "value": "kv-csom-platform-prod"
+    },
+    "serviceBusNamespaceName": {
+      "value": "sb-csom-platform-prod"
+    },
+    "redisCacheName": {
+      "value": "redis-csom-platform-prod"
+    },
+    "functionsAppName": {
+      "value": "func-csom-platform-prod"
+    },
+    "blobStorageAccountName": {
+      "value": "stcsomarchiveprod"
+    }
+  }
+}
+

@@ -105,6 +105,7 @@ This PoC implements a **Customer Service & Order Management Platform** with the 
 - Node.js 20+ and npm
 - GitLab account (or GitLab CI/CD runner)
 - **Terraform >= 1.5.0** (optional, for Terraform deployment)
+- **Azure CLI** (for ARM templates and Bicep)
 
 ### 1. Clone Repository
 
@@ -114,6 +115,26 @@ cd azure-architectural-blueprint
 ```
 
 ### 2. Set Up Azure Resources
+
+#### Option A: Using ARM Templates (Azure Native JSON)
+
+```bash
+# Login to Azure
+az login
+
+# Create resource group
+az group create --name rg-csom-platform-prod --location westeurope
+
+# Deploy infrastructure using ARM templates
+az deployment group create \
+  --resource-group rg-csom-platform-prod \
+  --template-file infrastructure/arm/azuredeploy.json \
+  --parameters @infrastructure/arm/azuredeploy.parameters.json
+```
+
+See [infrastructure/arm/README.md](./infrastructure/arm/README.md) for detailed ARM template setup instructions.
+
+#### Option B: Using Bicep (Azure Native DSL)
 
 ```bash
 # Login to Azure
@@ -125,6 +146,31 @@ az deployment group create \
   --template-file infrastructure/bicep/main.bicep \
   --parameters postgresAdminPassword='YourSecurePassword123!'
 ```
+
+#### Option C: Using Terraform (Multi-Cloud)
+
+```bash
+# Login to Azure
+az login
+
+# Navigate to Terraform directory
+cd infrastructure/terraform
+
+# Initialize Terraform
+terraform init
+
+# Copy and configure variables
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+
+# Plan deployment
+terraform plan
+
+# Apply configuration
+terraform apply
+```
+
+See [infrastructure/terraform/README.md](./infrastructure/terraform/README.md) for detailed Terraform setup instructions.
 
 ### 3. Configure Entra ID
 
@@ -244,6 +290,7 @@ azure-architectural-blueprint/
 │   ├── notification-service/  # Notification service
 │   └── audit-service/         # Audit & logging service
 ├── infrastructure/
+│   ├── arm/                   # ARM templates (JSON)
 │   ├── bicep/                 # Azure Bicep templates
 │   ├── terraform/             # Terraform configuration files
 │   ├── kubernetes/            # Kubernetes manifests

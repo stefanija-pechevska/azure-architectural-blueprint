@@ -1928,7 +1928,7 @@ This section outlines the deployment strategies used for safe, zero-downtime dep
 | CI/CD | GitLab CI/CD |
 | Monitoring | Azure Monitor, Application Insights |
 | Secrets | Azure Key Vault (or HashiCorp Vault) |
-| Infrastructure as Code | Bicep/ARM Templates or Terraform |
+| Infrastructure as Code | ARM Templates, Bicep, or Terraform |
 
 ---
 

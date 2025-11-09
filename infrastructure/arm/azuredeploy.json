@@ -1,0 +1,478 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "rg-csom-platform-prod",
+      "metadata": {
+        "description": "The name of the resource group"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "westeurope",
+      "metadata": {
+        "description": "The location for all resources"
+      }
+    },
+    "aksClusterName": {
+      "type": "string",
+      "defaultValue": "aks-csom-platform-prod",
+      "metadata": {
+        "description": "AKS cluster name"
+      }
+    },
+    "postgresServerName": {
+      "type": "string",
+      "defaultValue": "psql-csom-platform-prod",
+      "metadata": {
+        "description": "PostgreSQL server name"
+      }
+    },
+    "postgresAdminUsername": {
+      "type": "string",
+      "defaultValue": "csomadmin",
+      "metadata": {
+        "description": "PostgreSQL admin username"
+      }
+    },
+    "postgresAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "PostgreSQL admin password"
+      }
+    },
+    "acrName": {
+      "type": "string",
+      "defaultValue": "acrcsomplatform",
+      "metadata": {
+        "description": "ACR name"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "kv-csom-platform-prod",
+      "metadata": {
+        "description": "Key Vault name"
+      }
+    },
+    "serviceBusNamespaceName": {
+      "type": "string",
+      "defaultValue": "sb-csom-platform-prod",
+      "metadata": {
+        "description": "Service Bus namespace name"
+      }
+    },
+    "redisCacheName": {
+      "type": "string",
+      "defaultValue": "redis-csom-platform-prod",
+      "metadata": {
+        "description": "Redis Cache name"
+      }
+    },
+    "functionsAppName": {
+      "type": "string",
+      "defaultValue": "func-csom-platform-prod",
+      "metadata": {
+        "description": "Azure Functions App name"
+      }
+    },
+    "blobStorageAccountName": {
+      "type": "string",
+      "defaultValue": "stcsomarchiveprod",
+      "metadata": {
+        "description": "Blob Storage account name for archiving"
+      }
+    }
+  },
+  "variables": {
+    "functionsStorageAccountName": "[toLower(concat(parameters('functionsAppName'), 'stor'))]",
+    "blobStorageAccountNameLower": "[toLower(parameters('blobStorageAccountName'))]",
+    "functionsAppServicePlanName": "[concat(parameters('functionsAppName'), '-plan')]",
+    "appInsightsName": "csom-platform-insights"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[parameters('acrName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "adminUserEnabled": true
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-02-01",
+      "name": "[parameters('keyVaultName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "tenantId": "[subscription().tenantId]",
+        "enabledForDeployment": true,
+        "enabledForTemplateDeployment": true,
+        "enableSoftDelete": true,
+        "softDeleteRetentionInDays": 7,
+        "accessPolicies": []
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[parameters('postgresServerName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_B2s",
+        "tier": "Burstable"
+      },
+      "properties": {
+        "administratorLogin": "[parameters('postgresAdminUsername')]",
+        "administratorLoginPassword": "[parameters('postgresAdminPassword')]",
+        "version": "15",
+        "storage": {
+          "storageSizeGB": 32
+        },
+        "backup": {
+          "backupRetentionDays": 7,
+          "geoRedundantBackup": "Disabled"
+        },
+        "network": {
+          "publicNetworkAccess": "Disabled"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.ServiceBus/namespaces",
+      "apiVersion": "2022-01-01-preview",
+      "name": "[parameters('serviceBusNamespaceName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Premium",
+        "tier": "Premium"
+      }
+    },
+    {
+      "type": "Microsoft.ServiceBus/namespaces/topics",
+      "apiVersion": "2022-01-01-preview",
+      "name": "[concat(parameters('serviceBusNamespaceName'), '/order-events')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusNamespaceName'))]"
+      ],
+      "properties": {
+        "maxSizeInMegabytes": 5120,
+        "defaultMessageTimeToLive": "P7D"
+      }
+    },
+    {
+      "type": "Microsoft.ServiceBus/namespaces/topics",
+      "apiVersion": "2022-01-01-preview",
+      "name": "[concat(parameters('serviceBusNamespaceName'), '/payment-events')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusNamespaceName'))]"
+      ],
+      "properties": {
+        "maxSizeInMegabytes": 5120,
+        "defaultMessageTimeToLive": "P7D"
+      }
+    },
+    {
+      "type": "Microsoft.ServiceBus/namespaces/topics",
+      "apiVersion": "2022-01-01-preview",
+      "name": "[concat(parameters('serviceBusNamespaceName'), '/notification-events')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusNamespaceName'))]"
+      ],
+      "properties": {
+        "maxSizeInMegabytes": 5120,
+        "defaultMessageTimeToLive": "P7D"
+      }
+    },
+    {
+      "type": "Microsoft.ServiceBus/namespaces/topics",
+      "apiVersion": "2022-01-01-preview",
+      "name": "[concat(parameters('serviceBusNamespaceName'), '/gdpr-events')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusNamespaceName'))]"
+      ],
+      "properties": {
+        "maxSizeInMegabytes": 5120,
+        "defaultMessageTimeToLive": "P7D"
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "Request_Source": "rest"
+      }
+    },
+    {
+      "type": "Microsoft.Cache/redis",
+      "apiVersion": "2023-08-01",
+      "name": "[parameters('redisCacheName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "Standard",
+          "family": "C",
+          "capacity": 1
+        },
+        "enableNonSslPort": false,
+        "minimumTlsVersion": "1.2",
+        "redisConfiguration": {
+          "maxmemoryReserved": "50",
+          "maxmemoryPolicy": "allkeys-lru"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[variables('functionsStorageAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "supportsHttpsTrafficOnly": true,
+        "minimumTlsVersion": "TLS1_2"
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-01-01",
+      "name": "[variables('functionsAppServicePlanName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp",
+      "sku": {
+        "name": "Y1",
+        "tier": "Dynamic"
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('functionsAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('functionsStorageAccountName'))]",
+        "[resourceId('Microsoft.Web/serverfarms', variables('functionsAppServicePlanName'))]",
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('postgresServerName'))]",
+        "[resourceId('Microsoft.Cache/redis', parameters('redisCacheName'))]",
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('functionsAppServicePlanName'))]",
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('functionsStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('functionsStorageAccountName')), '2023-01-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('functionsStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('functionsStorageAccountName')), '2023-01-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTSHARE",
+              "value": "[toLower(parameters('functionsAppName'))]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~4"
+            },
+            {
+              "name": "FUNCTIONS_WORKER_RUNTIME",
+              "value": "java"
+            },
+            {
+              "name": "POSTGRES_HOST",
+              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('postgresServerName'))).fullyQualifiedDomainName]"
+            },
+            {
+              "name": "POSTGRES_USER",
+              "value": "[parameters('postgresAdminUsername')]"
+            },
+            {
+              "name": "REDIS_CACHE_HOST",
+              "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('redisCacheName'))).hostName]"
+            },
+            {
+              "name": "REDIS_CACHE_PORT",
+              "value": "[string(reference(resourceId('Microsoft.Cache/redis', parameters('redisCacheName'))).port)]"
+            },
+            {
+              "name": "SERVICE_BUS_CONNECTION_STRING",
+              "value": "Connection string should be set from Key Vault"
+            },
+            {
+              "name": "BLOB_STORAGE_CONNECTION_STRING",
+              "value": "Connection string should be set from Key Vault"
+            },
+            {
+              "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).InstrumentationKey]"
+            }
+          ],
+          "javaVersion": "17"
+        },
+        "httpsOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[variables('blobStorageAccountNameLower')]",
+      "location": "[parameters('location')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "supportsHttpsTrafficOnly": true,
+        "minimumTlsVersion": "TLS1_2",
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": false,
+        "networkAcls": {
+          "defaultAction": "Allow"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-01-01",
+      "name": "[concat(variables('blobStorageAccountNameLower'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('blobStorageAccountNameLower'))]"
+      ],
+      "properties": {
+        "deleteRetentionPolicy": {
+          "enabled": true,
+          "days": 7
+        },
+        "containerDeleteRetentionPolicy": {
+          "enabled": true,
+          "days": 7
+        },
+        "cors": {
+          "corsRules": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[concat(variables('blobStorageAccountNameLower'), '/default/archive')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('blobStorageAccountNameLower'), 'default')]"
+      ],
+      "properties": {
+        "publicAccess": "None",
+        "metadata": {
+          "description": "Archived files and documents"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[concat(variables('blobStorageAccountNameLower'), '/default/audit-logs')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('blobStorageAccountNameLower'), 'default')]"
+      ],
+      "properties": {
+        "publicAccess": "None",
+        "metadata": {
+          "description": "Archived audit logs for compliance"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[concat(variables('blobStorageAccountNameLower'), '/default/gdpr-data')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('blobStorageAccountNameLower'), 'default')]"
+      ],
+      "properties": {
+        "publicAccess": "None",
+        "metadata": {
+          "description": "GDPR export and anonymized data"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[concat(variables('blobStorageAccountNameLower'), '/default/customer-documents')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('blobStorageAccountNameLower'), 'default')]"
+      ],
+      "properties": {
+        "publicAccess": "None",
+        "metadata": {
+          "description": "Customer documents and attachments"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "acrLoginServer": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName'))).loginServer]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))).vaultUri]"
+    },
+    "postgresFqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('postgresServerName'))).fullyQualifiedDomainName]"
+    },
+    "serviceBusConnectionString": {
+      "type": "string",
+      "value": "Connection string should be retrieved from Azure Portal"
+    },
+    "appInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).ConnectionString]"
+    },
+    "redisCacheHostName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('redisCacheName'))).hostName]"
+    },
+    "redisCachePort": {
+      "type": "string",
+      "value": "[string(reference(resourceId('Microsoft.Cache/redis', parameters('redisCacheName'))).port)]"
+    },
+    "functionsAppName": {
+      "type": "string",
+      "value": "[parameters('functionsAppName')]"
+    },
+    "functionsAppUrl": {
+      "type": "string",
+      "value": "[concat('https://', reference(resourceId('Microsoft.Web/sites', parameters('functionsAppName'))).defaultHostName)]"
+    },
+    "blobStorageAccountName": {
+      "type": "string",
+      "value": "[variables('blobStorageAccountNameLower')]"
+    }
+  }
+}
+
