@@ -62,6 +62,8 @@ This guide provides detailed steps to implement the cloud-native architecture te
    ```
    Save the output (appId, password, tenant) for GitLab CI/CD configuration.
 
+   **Note**: For comprehensive information about deployment authentication options (Service Principal, Publish Profile, Managed Identity), see the [Deployment Authentication Options](#deployment-authentication-options) section below.
+
 ---
 
 ### Step 1.2: Entra ID Configuration
@@ -1111,6 +1113,780 @@ kubectl get pods -n production
 
 # Access Application Insights
 az monitor app-insights component show --app csom-platform-insights
+```
+
+---
+
+## Deployment Authentication Options
+
+This section provides a comprehensive guide to Azure deployment authentication methods: Service Principal, Publish Profile, and Managed Identity. Understanding these options is crucial for secure and efficient deployments.
+
+### Table of Contents
+
+- [Overview](#overview)
+- [Service Principal](#service-principal)
+- [Publish Profile](#publish-profile)
+- [Managed Identity](#managed-identity)
+- [Comparison and When to Use Each](#comparison-and-when-to-use-each)
+- [Security Best Practices](#security-best-practices)
+- [Service-Specific Examples](#service-specific-examples)
+
+---
+
+### Overview
+
+Azure provides three main authentication methods for deployments:
+
+1. **Service Principal** - Non-interactive authentication for CI/CD pipelines and automation
+2. **Publish Profile** - Simplified authentication for manual deployments and IDE integration
+3. **Managed Identity** - Azure-managed identity for resources accessing other Azure services
+
+Each method has specific use cases, advantages, and security considerations.
+
+---
+
+### Service Principal
+
+#### What is a Service Principal?
+
+A Service Principal is an identity created for use with applications, services, and automation tools to access Azure resources. It's similar to a user account but intended for non-human access.
+
+**Key Characteristics:**
+- Non-interactive authentication
+- Credentials-based (client ID and secret)
+- Scoped permissions via Azure RBAC
+- Ideal for CI/CD pipelines and automation
+- Supports certificate-based authentication (more secure)
+
+#### When to Use Service Principal
+
+✅ **Use Service Principal for:**
+- CI/CD pipelines (GitLab CI/CD, GitHub Actions, Azure DevOps)
+- Infrastructure as Code deployments (Terraform, Bicep, ARM templates)
+- Automated scripts and tooling
+- Service-to-service authentication
+- AKS cluster authentication
+- ACR (Azure Container Registry) access
+- Production deployments requiring audit trails
+
+❌ **Don't use Service Principal for:**
+- Manual, one-off deployments from local machines
+- Developer workstations (use Azure CLI with user login)
+- Interactive scenarios
+
+#### Creating a Service Principal
+
+**Option 1: Using Azure CLI (Recommended)**
+
+```bash
+# Create service principal with Contributor role for a resource group
+az ad sp create-for-rbac \
+  --name sp-gitlab-cicd \
+  --role contributor \
+  --scopes /subscriptions/{subscription-id}/resourceGroups/rg-your-project-name
+
+# Output will include:
+# {
+#   "appId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # Client ID
+#   "password": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # Client Secret
+#   "tenant": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # Tenant ID
+# }
+```
+
+**Option 2: Using Azure Portal**
+
+1. Navigate to **Azure Active Directory** → **App registrations**
+2. Click **New registration**
+3. Enter a name (e.g., `sp-gitlab-cicd`)
+4. Select **Accounts in this organizational directory only**
+5. Click **Register**
+6. Note the **Application (client) ID** and **Directory (tenant) ID**
+7. Go to **Certificates & secrets** → **New client secret**
+8. Add description and expiration
+9. **Copy the secret value immediately** (shown only once)
+
+#### Assigning Permissions
+
+**Least Privilege Principle:**
+
+```bash
+# Assign specific role to resource group (most restrictive)
+az role assignment create \
+  --assignee <app-id> \
+  --role "Contributor" \
+  --scope /subscriptions/{subscription-id}/resourceGroups/rg-your-project-name
+
+# Assign role to subscription (broader scope)
+az role assignment create \
+  --assignee <app-id> \
+  --role "Contributor" \
+  --scope /subscriptions/{subscription-id}
+
+# Common roles:
+# - Contributor: Full access to resources
+# - Reader: Read-only access
+# - AcrPush: Push images to ACR
+# - Kubernetes Cluster Admin: Manage AKS clusters
+```
+
+#### Using Service Principal in CI/CD
+
+**GitLab CI/CD Example:**
+
+```yaml
+deploy:
+  stage: deploy
+  image: mcr.microsoft.com/azure-cli:latest
+  before_script:
+    - az login --service-principal \
+        -u $AZURE_CLIENT_ID \
+        -p $AZURE_CLIENT_SECRET \
+        --tenant $AZURE_TENANT_ID
+  script:
+    - az aks get-credentials \
+        --resource-group $AKS_RESOURCE_GROUP \
+        --name $AKS_CLUSTER_NAME
+    - kubectl apply -f deployment.yaml
+```
+
+**GitLab CI/CD Variables:**
+- `AZURE_CLIENT_ID` - Service principal client ID (appId)
+- `AZURE_CLIENT_SECRET` - Service principal secret (password)
+- `AZURE_TENANT_ID` - Azure tenant ID
+- `AZURE_SUBSCRIPTION_ID` - Azure subscription ID
+
+**Terraform Example:**
+
+```hcl
+# Configure Azure Provider
+provider "azurerm" {
+  features {}
+  
+  subscription_id = var.subscription_id
+  client_id       = var.client_id
+  client_secret   = var.client_secret
+  tenant_id       = var.tenant_id
+}
+```
+
+**Bicep/ARM Example:**
+
+```bash
+# Login with service principal
+az login --service-principal \
+  -u $AZURE_CLIENT_ID \
+  -p $AZURE_CLIENT_SECRET \
+  --tenant $AZURE_TENANT_ID
+
+# Deploy infrastructure
+az deployment group create \
+  --resource-group rg-your-project \
+  --template-file main.bicep
+```
+
+#### Service Principal Security Best Practices
+
+1. **Use Certificate Authentication (More Secure)**
+   ```bash
+   # Create service principal with certificate
+   az ad sp create-for-rbac \
+     --name sp-gitlab-cicd \
+     --cert @cert.pem \
+     --create-cert
+   ```
+
+2. **Implement Least Privilege**
+   - Assign minimum required permissions
+   - Scope to specific resource groups, not entire subscription
+   - Use role-based access control (RBAC)
+
+3. **Rotate Credentials Regularly**
+   ```bash
+   # Create new secret
+   az ad sp credential reset \
+     --name sp-gitlab-cicd \
+     --append
+   
+   # Update CI/CD variables with new secret
+   # Remove old secret after verification
+   ```
+
+4. **Store Secrets Securely**
+   - Use GitLab CI/CD protected variables
+   - Use Azure Key Vault for secret storage
+   - Never commit secrets to version control
+
+5. **Monitor and Audit**
+   - Enable Azure AD audit logs
+   - Review service principal activity regularly
+   - Set up alerts for unusual activity
+
+---
+
+### Publish Profile
+
+#### What is a Publish Profile?
+
+A Publish Profile is an XML file containing deployment credentials for Azure App Service, Azure Functions, or Azure Static Web Apps. It simplifies deployment from IDEs like Visual Studio, Visual Studio Code, or deployment tools.
+
+**Key Characteristics:**
+- XML file format (`.PublishSettings`)
+- Contains deployment endpoint and credentials
+- One profile per Azure resource
+- Simplified deployment workflow
+- Ideal for manual deployments and IDE integration
+
+#### When to Use Publish Profile
+
+✅ **Use Publish Profile for:**
+- Manual deployments from local machines
+- Visual Studio / Visual Studio Code deployments
+- Quick testing and development
+- One-off deployments
+- Azure Functions deployment from IDE
+- Static Web Apps deployment
+- App Service deployment from local machine
+
+❌ **Don't use Publish Profile for:**
+- CI/CD pipelines (use Service Principal)
+- Production automated deployments
+- Infrastructure as Code (use Service Principal)
+- Service-to-service authentication
+
+#### Downloading Publish Profile
+
+**Option 1: Azure Portal**
+
+1. Navigate to your **App Service** or **Function App**
+2. Click **Get publish profile** (top menu)
+3. Save the `.PublishSettings` file
+4. **Keep it secure** - contains deployment credentials
+
+**Option 2: Azure CLI**
+
+```bash
+# Download publish profile for App Service
+az webapp deployment list-publishing-profiles \
+  --name your-app-service \
+  --resource-group rg-your-project \
+  --xml > publish-profile.xml
+
+# Download publish profile for Function App
+az functionapp deployment list-publishing-profiles \
+  --name your-function-app \
+  --resource-group rg-your-project \
+  --xml > publish-profile.xml
+```
+
+#### Using Publish Profile
+
+**Visual Studio:**
+
+1. Right-click project → **Publish**
+2. Select **Azure** → **Azure App Service**
+3. Import publish profile
+4. Select the `.PublishSettings` file
+5. Click **Publish**
+
+**Visual Studio Code:**
+
+1. Install **Azure App Service** extension
+2. Sign in to Azure
+3. Right-click project → **Deploy to Web App**
+4. Or use publish profile file directly
+
+**Azure CLI:**
+
+```bash
+# Deploy using publish profile
+az webapp deploy \
+  --name your-app-service \
+  --resource-group rg-your-project \
+  --src-path ./app.zip \
+  --type zip
+```
+
+**MSBuild:**
+
+```bash
+# Publish and deploy using publish profile
+msbuild /p:PublishProfile=publish-profile.pubxml \
+  /p:WebPublishMethod=FileSystem \
+  /p:PublishUrl=./publish
+```
+
+#### Publish Profile Structure
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<publishData>
+  <publishProfile
+    profileName="your-app-service - Web Deploy"
+    publishMethod="MSDeploy"
+    publishUrl="your-app-service.scm.azurewebsites.net:443"
+    userName="$your-app-service"
+    userPWD="deployment-password"
+    destinationAppUrl="https://your-app-service.azurewebsites.net"
+    SQLServerDBConnectionString=""
+    mySQLDBConnectionString=""
+    hostingProviderForumLink=""
+    controlPanelLink="https://portal.azure.com"
+    webSystem="WebSites">
+    <databases />
+  </publishProfile>
+</publishData>
+```
+
+#### Publish Profile Security Best Practices
+
+1. **Protect the File**
+   - Store in secure location
+   - Never commit to version control
+   - Add to `.gitignore`
+   - Share only with authorized personnel
+
+2. **Rotate Credentials**
+   ```bash
+   # Reset deployment credentials
+   az webapp deployment user set \
+     --user-name <username> \
+     --password <new-password>
+   ```
+
+3. **Use Scoped Access**
+   - Download profile only when needed
+   - Delete after use if possible
+   - Use Service Principal for automation instead
+
+4. **Monitor Usage**
+   - Review deployment logs
+   - Set up alerts for deployments
+   - Audit who has access to publish profiles
+
+---
+
+### Managed Identity
+
+#### What is Managed Identity?
+
+Managed Identity is an Azure feature that provides Azure services with an automatically managed identity in Azure AD. It eliminates the need for credentials in code or configuration files.
+
+**Key Characteristics:**
+- No credentials to manage
+- Automatically rotated by Azure
+- Integrated with Azure AD
+- Two types: System-assigned and User-assigned
+- Most secure option for Azure-to-Azure authentication
+
+#### Types of Managed Identity
+
+**1. System-Assigned Managed Identity**
+- Created and tied to a specific Azure resource
+- Lifecycle tied to the resource (deleted with resource)
+- Unique to each resource
+- Cannot be shared
+
+**2. User-Assigned Managed Identity**
+- Created as standalone Azure resource
+- Can be assigned to multiple resources
+- Independent lifecycle
+- Reusable across resources
+
+#### When to Use Managed Identity
+
+✅ **Use Managed Identity for:**
+- Azure services accessing other Azure services
+- Applications running on Azure (App Service, Functions, AKS)
+- Accessing Azure Key Vault from Azure services
+- Accessing Azure Storage from Azure services
+- Accessing Azure SQL Database from Azure services
+- Eliminating secrets from code and configuration
+
+❌ **Don't use Managed Identity for:**
+- CI/CD pipelines (use Service Principal)
+- Local development (use Azure CLI with user login)
+- Non-Azure resources
+- Cross-tenant scenarios (use Service Principal)
+
+#### Enabling Managed Identity
+
+**System-Assigned (Azure Portal):**
+
+1. Navigate to your Azure resource (App Service, Function App, etc.)
+2. Go to **Identity** settings
+3. Select **System assigned** tab
+4. Turn **Status** to **On**
+5. Click **Save**
+6. Note the **Object (principal) ID**
+
+**System-Assigned (Azure CLI):**
+
+```bash
+# Enable system-assigned managed identity for App Service
+az webapp identity assign \
+  --name your-app-service \
+  --resource-group rg-your-project
+
+# Enable for Function App
+az functionapp identity assign \
+  --name your-function-app \
+  --resource-group rg-your-project
+
+# Enable for AKS (requires addon)
+az aks update \
+  --name your-aks-cluster \
+  --resource-group rg-your-project \
+  --enable-managed-identity
+```
+
+**User-Assigned (Azure CLI):**
+
+```bash
+# Create user-assigned managed identity
+az identity create \
+  --name mi-your-identity \
+  --resource-group rg-your-project
+
+# Assign to App Service
+az webapp identity assign \
+  --name your-app-service \
+  --resource-group rg-your-project \
+  --identities mi-your-identity
+
+# Get identity client ID
+az identity show \
+  --name mi-your-identity \
+  --resource-group rg-your-project \
+  --query clientId -o tsv
+```
+
+#### Granting Permissions to Managed Identity
+
+**Access Azure Key Vault:**
+
+```bash
+# Grant Key Vault access to managed identity
+az keyvault set-policy \
+  --name your-key-vault \
+  --object-id <managed-identity-object-id> \
+  --secret-permissions get list
+```
+
+**Access Azure Storage:**
+
+```bash
+# Assign Storage Blob Data Reader role
+az role assignment create \
+  --assignee <managed-identity-object-id> \
+  --role "Storage Blob Data Reader" \
+  --scope /subscriptions/{subscription-id}/resourceGroups/rg-your-project/providers/Microsoft.Storage/storageAccounts/your-storage-account
+```
+
+**Access Azure SQL Database:**
+
+```sql
+-- Create user for managed identity in SQL Database
+CREATE USER [your-app-service] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [your-app-service];
+ALTER ROLE db_datawriter ADD MEMBER [your-app-service];
+```
+
+#### Using Managed Identity in Code
+
+**C# / .NET Example:**
+
+```csharp
+// Using Azure.Identity
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+
+var credential = new DefaultAzureCredential();
+var client = new SecretClient(
+    new Uri("https://your-key-vault.vault.azure.net/"),
+    credential
+);
+
+var secret = await client.GetSecretAsync("my-secret");
+```
+
+**Java / Spring Boot Example:**
+
+```java
+// Using Azure Identity
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.SecretClientBuilder;
+
+SecretClient secretClient = new SecretClientBuilder()
+    .vaultUrl("https://your-key-vault.vault.azure.net/")
+    .credential(new DefaultAzureCredentialBuilder().build())
+    .buildClient();
+
+String secret = secretClient.getSecret("my-secret").getValue();
+```
+
+**Python Example:**
+
+```python
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
+
+credential = DefaultAzureCredential()
+client = SecretClient(
+    vault_url="https://your-key-vault.vault.azure.net/",
+    credential=credential
+)
+
+secret = client.get_secret("my-secret")
+```
+
+#### Managed Identity Security Best Practices
+
+1. **Use System-Assigned When Possible**
+   - Simpler to manage
+   - Automatic lifecycle management
+   - No risk of orphaned identities
+
+2. **Use User-Assigned for Multiple Resources**
+   - When same identity needed across resources
+   - Easier to manage permissions centrally
+
+3. **Implement Least Privilege**
+   - Grant minimum required permissions
+   - Use RBAC roles appropriately
+   - Regular permission audits
+
+4. **Monitor Usage**
+   - Review managed identity usage
+   - Set up alerts for access failures
+   - Audit identity assignments
+
+---
+
+### Comparison and When to Use Each
+
+| Feature | Service Principal | Publish Profile | Managed Identity |
+|---------|------------------|-----------------|------------------|
+| **Use Case** | CI/CD, Automation | Manual, IDE | Azure-to-Azure |
+| **Credentials** | Client ID + Secret | XML file | None (managed) |
+| **Security** | High (with rotation) | Medium | Highest |
+| **Scope** | Subscription/Resource Group | Single Resource | Azure Resources |
+| **Lifecycle** | Manual management | Manual management | Automatic |
+| **CI/CD** | ✅ Yes | ❌ No | ❌ No |
+| **Local Dev** | ✅ Yes | ✅ Yes | ❌ No |
+| **Azure Services** | ✅ Yes | ❌ No | ✅ Yes |
+| **Audit Trail** | ✅ Yes | Limited | ✅ Yes |
+
+**Decision Tree:**
+
+```
+Are you deploying from CI/CD pipeline?
+├─ Yes → Use Service Principal
+└─ No
+   ├─ Is it an Azure service accessing another Azure service?
+   │  ├─ Yes → Use Managed Identity
+   │  └─ No
+   │     ├─ Manual deployment from local machine?
+   │     │  ├─ Yes → Use Publish Profile (for quick deployment)
+   │     │  └─ No → Use Service Principal
+   │     └─ Automated script?
+   │        └─ Yes → Use Service Principal
+```
+
+---
+
+### Security Best Practices
+
+#### General Security Practices
+
+1. **Never Commit Credentials**
+   - Use `.gitignore` for publish profiles
+   - Store secrets in CI/CD variables
+   - Use Azure Key Vault for secrets
+
+2. **Implement Least Privilege**
+   - Grant minimum required permissions
+   - Scope to specific resource groups
+   - Use role-based access control
+
+3. **Rotate Credentials Regularly**
+   - Service Principal secrets: Every 90 days
+   - Publish Profile credentials: Every 90 days
+   - Managed Identity: Automatic (no action needed)
+
+4. **Monitor and Audit**
+   - Enable Azure AD audit logs
+   - Review access logs regularly
+   - Set up alerts for unusual activity
+
+5. **Use Secure Storage**
+   - Azure Key Vault for secrets
+   - GitLab CI/CD protected variables
+   - Encrypted secret management
+
+#### Service Principal Security
+
+- Use certificate authentication when possible
+- Implement credential rotation policy
+- Monitor service principal activity
+- Use separate service principals per environment
+
+#### Publish Profile Security
+
+- Store in secure location
+- Delete after use if possible
+- Rotate deployment credentials regularly
+- Limit access to authorized personnel only
+
+#### Managed Identity Security
+
+- Prefer system-assigned when possible
+- Grant minimum required permissions
+- Monitor identity usage
+- Regular permission audits
+
+---
+
+### Service-Specific Examples
+
+#### Azure App Service
+
+**Service Principal (CI/CD):**
+```yaml
+# GitLab CI/CD
+deploy-app-service:
+  script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az webapp deployment source config-zip \
+        --name your-app-service \
+        --resource-group rg-your-project \
+        --src app.zip
+```
+
+**Publish Profile (Manual):**
+```bash
+# Download publish profile
+az webapp deployment list-publishing-profiles \
+  --name your-app-service \
+  --resource-group rg-your-project \
+  --xml > publish-profile.xml
+
+# Deploy using Visual Studio or VS Code with publish profile
+```
+
+**Managed Identity (Access Key Vault):**
+```bash
+# Enable managed identity
+az webapp identity assign \
+  --name your-app-service \
+  --resource-group rg-your-project
+
+# Grant Key Vault access
+az keyvault set-policy \
+  --name your-key-vault \
+  --object-id <managed-identity-object-id> \
+  --secret-permissions get list
+```
+
+#### Azure Functions
+
+**Service Principal (CI/CD):**
+```yaml
+# GitLab CI/CD
+deploy-function:
+  script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az functionapp deployment source config-zip \
+        --name your-function-app \
+        --resource-group rg-your-project \
+        --src function.zip
+```
+
+**Publish Profile (Manual):**
+```bash
+# Download publish profile
+az functionapp deployment list-publishing-profiles \
+  --name your-function-app \
+  --resource-group rg-your-project \
+  --xml > publish-profile.xml
+```
+
+**Managed Identity (Access Storage):**
+```bash
+# Enable managed identity
+az functionapp identity assign \
+  --name your-function-app \
+  --resource-group rg-your-project
+
+# Grant Storage access
+az role assignment create \
+  --assignee <managed-identity-object-id> \
+  --role "Storage Blob Data Contributor" \
+  --scope /subscriptions/{subscription-id}/resourceGroups/rg-your-project/providers/Microsoft.Storage/storageAccounts/your-storage-account
+```
+
+#### Azure Static Web Apps
+
+**Service Principal (CI/CD):**
+```yaml
+# GitLab CI/CD
+deploy-static-web-app:
+  script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az staticwebapp deploy \
+        --name your-static-web-app \
+        --resource-group rg-your-project \
+        --source-location ./dist
+```
+
+**Publish Profile (Manual):**
+- Static Web Apps use deployment tokens
+- Get token from Azure Portal → Static Web App → Manage deployment token
+- Use in deployment tools or VS Code extension
+
+#### Azure Kubernetes Service (AKS)
+
+**Service Principal (CI/CD):**
+```yaml
+# GitLab CI/CD
+deploy-aks:
+  script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az aks get-credentials --resource-group $AKS_RESOURCE_GROUP --name $AKS_CLUSTER_NAME
+    - kubectl apply -f deployment.yaml
+```
+
+**Managed Identity (Pod Identity):**
+```bash
+# Enable managed identity for AKS
+az aks update \
+  --name your-aks-cluster \
+  --resource-group rg-your-project \
+  --enable-managed-identity
+
+# Use Azure Key Vault Provider for Secrets Store CSI Driver
+# Pods can use managed identity to access Key Vault
+```
+
+#### Azure Container Registry (ACR)
+
+**Service Principal (CI/CD):**
+```yaml
+# GitLab CI/CD
+push-to-acr:
+  script:
+    - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+    - az acr login --name your-acr
+    - docker push your-acr.azurecr.io/your-image:latest
+```
+
+**Managed Identity (ACR Pull from AKS):**
+```bash
+# Attach ACR to AKS using managed identity
+az aks update \
+  --name your-aks-cluster \
+  --resource-group rg-your-project \
+  --attach-acr your-acr
 ```
 
 ---
