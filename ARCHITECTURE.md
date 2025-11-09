@@ -297,7 +297,7 @@ This section defines the non-functional requirements (NFRs) that the system must
    - **Read Replicas**: Up to 5 read replicas for read-heavy workloads
    - **Vertical Scaling**: Scale compute and storage independently
    - **Connection Pooling**: PgBouncer for efficient connection management
-   - **Partitioning**: Table partitioning for large datasets (orders, audit logs)
+   - **Partitioning**: Table partitioning for large datasets (example: business entities, audit logs)
 
 3. **Caching Strategy**
    - **Redis Cache**: Cache frequently accessed data (example: business entities, user profiles)
@@ -833,19 +833,19 @@ This diagram illustrates all Azure services used in the platform and their relat
 **Authentication**: Entra External ID
 
 **Microfrontends**:
-1. **Orders Microfrontend**
-   - Order placement, tracking, history
-   - Client order management
+1. **Example MFE 1** (Public)
+   - Example functionality for external users
+   - User-facing features
 
-2. **Products Microfrontend**
-   - Product catalog, search, details
-   - Product browsing and details
+2. **Example MFE 2** (Public)
+   - Example functionality for external users
+   - User-facing features
 
-3. **Account Microfrontend**
+3. **Example MFE 3** (Public)
    - User profile, settings
-   - GDPR data management (export, deletion requests)
+   - Data management (export, deletion requests)
 
-4. **Notifications Microfrontend**
+4. **Example MFE 4** (Notifications)
    - Real-time notifications via WebSocket/SSE
    - Client-facing notifications
 
@@ -1344,7 +1344,7 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 
 1. **DataRetentionCleanup** (Timer Trigger - Daily at 2 AM UTC)
    - Clean up old notifications (older than 90 days)
-   - Anonymize inactive customer data (older than 7 years)
+   - Anonymize inactive user data (older than 7 years)
    - Delete archived audit logs older than 7 years (after archival to Blob Storage)
 
 2. **AuditLogArchival** (Timer Trigger - Daily at 3 AM UTC)
@@ -1358,11 +1358,11 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
    - Update table statistics
    - Optimize database performance
 
-4. **GDPRDataAnonymization** (Service Bus Trigger)
-   - Process GDPR deletion requests
-   - Anonymize customer data across all services
-   - Archive anonymized data to Blob Storage (`gdpr-data` container)
-   - Export customer data to Blob Storage on request
+4. **ComplianceDataAnonymization** (Service Bus Trigger)
+   - Process data deletion requests (e.g., GDPR)
+   - Anonymize user data across all services
+   - Archive anonymized data to Blob Storage (`compliance-data` container)
+   - Export user data to Blob Storage on request
 
 5. **NotificationCleanup** (Timer Trigger - Daily at 1 AM UTC)
    - Remove read notifications older than 30 days
@@ -1424,10 +1424,10 @@ For a detailed comparison, see [SECRETS_MANAGEMENT_COMPARISON.md](./SECRETS_MANA
 **Purpose**: Asynchronous communication between services
 
 **Topics**:
-- `order-events` - Order lifecycle events
-- `payment-events` - Payment processing events
-- `notification-events` - Notification triggers
-- `gdpr-events` - GDPR compliance events
+- `service-events` - Service lifecycle events (example)
+- `business-events` - Business processing events (example)
+- `notification-events` - Notification triggers (example)
+- `compliance-events` - Compliance events (example)
 
 **Subscriptions**:
 - Per-service subscriptions with filters
